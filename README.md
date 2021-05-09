@@ -1,2 +1,1 @@
-# acrlinux-yocto
-acrlinux-yocto
+yocto-acrlinux
