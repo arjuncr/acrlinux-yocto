@@ -9,7 +9,7 @@ jobs:
 
     steps:
     - name: Installing build dep
-      run: sudo apt install -y bison flex libelf-dev git build-essential libsdl1.2-dev texinfo gawk chrpath diffstat
+      run: sudo apt update;sudo apt install -y bison flex libelf-dev git build-essential libsdl1.2-dev texinfo gawk chrpath diffstat
     - name: Running script to build acrlinux
       run: |
         git clone https://github.com/arjuncr/acrlinux-yocto.git
