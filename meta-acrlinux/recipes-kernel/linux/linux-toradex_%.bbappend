@@ -7,7 +7,7 @@ CUSTOM_DEVICETREE = "acrlinux.dts"
  
 SRC_URI += "\ 
 	file://${CUSTOM_DEVICETREE} \
-	file://custom-display.patch \
+#	file://custom-display.patch \
 	file://defconfig \
 	"
  
