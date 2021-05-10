@@ -14,5 +14,5 @@ jobs:
       run: |
         git clone https://github.com/arjuncr/acrlinux-yocto.git
         cd acrlinux-yocto
-        . oe-init-build-env
+        . acrlinux-env
         bitbake core-image-minimal
