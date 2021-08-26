@@ -1,7 +1,7 @@
 **yocto-acrlinux**  
 
 
-**To build**   
+**To build x86_64**   
 
 ```
 . acrlinux-env
