@@ -6,7 +6,7 @@
 ```
 . acrlinux-env
 
-bitbake core-image-minimal    
+bitbake acrlinux-minimal    
 ```  
 
 ```
