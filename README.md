@@ -23,7 +23,7 @@ NATIVELSBSTRING      = "ubuntu-20.04"
 TARGET_SYS           = "x86_64-acrlinux-linux"
 MACHINE              = "qemux86-64"
 DISTRO               = "acrlinux"
-DISTRO_VERSION       = "1.0.0"
+DISTRO_VERSION       = "1.0.0.0"
 TUNE_FEATURES        = "m64 core2"
 TARGET_FPU           = ""
 meta
