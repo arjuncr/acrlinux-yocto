@@ -75,7 +75,7 @@ MACHINE ??= "qemux86-64"
 #
 # The default is a tmp directory under TOPDIR.
 #
-#TMPDIR = "${TOPDIR}/acrlinux_build"
+TMPDIR = "${TOPDIR}/acrlinux_build"
 
 #
 # Default policy config
