@@ -1,7 +1,7 @@
 **yocto-acrlinux**  
 
 steps to clone:     
-https://github.com/arjuncr/acrlinux-yocto.git -b acrlinux-active
+git clone https://github.com/arjuncr/acrlinux-yocto.git -b acrlinux-active
 
 **To build x86_64**   
 
