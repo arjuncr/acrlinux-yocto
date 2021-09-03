@@ -1,5 +1,22 @@
-**yocto-acrlinux**  
+**acrlinux**    
 
+
+**Setting up your acrlinux project**  
+
+**Prerequisite**     
+
+Ubuntu 20.04  
+sudo apt-get install -y git build-essential libsdl1.2-dev texinfo gawk chrpath diffstat
+
+**Download the source**  
+
+git clone https://github.com/arjuncr/acrlinux-yocto.git      
+              OR     
+git clone https://github.com/arjuncr/acrlinux-yocto.git -b acrlinux-active  
+
+cd acrlinux-yocto   
+
+**Build**   
 
 **To build x86_64**   
 

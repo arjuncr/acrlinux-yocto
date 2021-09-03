@@ -1,15 +1,15 @@
 if [ -n "$BASH_SOURCE" ]; then
-   OBMCROOT="`dirname $BASH_SOURCE`"
+   ACRLINUXROOT="`dirname $BASH_SOURCE`"
 elif [ -n "$ZSH_NAME" ]; then
-   OBMCROOT="`dirname $0`"
+   ACRLINUXROOT="`dirname $0`"
 else
-   OBMCROOT="`pwd`"
+   ACRLINUXROOT="`pwd`"
 fi
 
-if [ -f $OBMCROOT/customrc ]; then
+if [ -f $ACRLINUXROOT/customrc ]; then
     echo "### Sourcing customrc ###"
-    . $OBMCROOT/customrc
+    . $ACRLINUXROOT/customrc
 fi
 
 echo "### Initializing OE build env ###"
-. $OBMCROOT/oe-init-build-env
+. $ACRLINUXROOT/oe-init-build-env
