@@ -1,4 +1,4 @@
-require recipes-kernel/linux/linux-yocto_5.10.bb
+require recipes-kernel/linux/linux-yocto_5.4.bb
 
 SRC_URI += "file://x86_64_defconfig"
 
