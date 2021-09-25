@@ -10,7 +10,7 @@
 "
 " Will try to use git to find the user name and email
 
-if &compatible || v:version < 600 || exists("b:loaded_bitbake_plugin")
+if &compatible || v:version < 600
     finish
 endif
 
@@ -25,7 +25,7 @@ endfun
 fun! <SID>GetUserEmail()
     let l:user_email = system("git config --get user.email")
     if v:shell_error
-        return "unknown@user.org"
+        return "unknow@user.org"
     else
         return substitute(l:user_email, "\n", "", "")
 endfun
@@ -41,10 +41,6 @@ fun! BBHeader()
 endfun
 
 fun! NewBBTemplate()
-    if line2byte(line('$') + 1) != -1
-        return
-    endif
-
     let l:paste = &paste
     set nopaste
     
@@ -52,7 +48,7 @@ fun! NewBBTemplate()
     call BBHeader()
 
     " New the bb template
-    put ='SUMMARY = \"\"'
+    put ='DESCRIPTION = \"\"'
     put ='HOMEPAGE = \"\"'
     put ='LICENSE = \"\"' 
     put ='SECTION = \"\"'
@@ -62,7 +58,7 @@ fun! NewBBTemplate()
 
     " Go to the first place to edit
     0
-    /^SUMMARY =/
+    /^DESCRIPTION =/
     exec "normal 2f\""
 
     if paste == 1
@@ -80,7 +76,7 @@ if v:progname =~ "vimdiff"
 endif
 
 augroup NewBB
-    au BufNewFile,BufReadPost *.bb
+    au BufNewFile *.bb
                 \ if g:bb_create_on_empty |
                 \    call NewBBTemplate() |
                 \ endif

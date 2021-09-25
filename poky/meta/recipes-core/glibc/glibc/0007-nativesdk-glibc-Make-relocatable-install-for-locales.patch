@@ -1,4 +1,4 @@
-From 732d4f4954fe60718870048d0583a20a7a8a8540 Mon Sep 17 00:00:00 2001
+From 3df91d1d8b9c7a01b3ef8133c4f9b9764227d583 Mon Sep 17 00:00:00 2001
 From: Khem Raj <raj.khem@gmail.com>
 Date: Fri, 3 Aug 2018 09:55:12 -0700
 Subject: [PATCH] nativesdk-glibc: Make relocatable install for locales
@@ -12,17 +12,16 @@ Upstream-Status: Inappropriate (OE-specific)
 Signed-off-by: Ross Burton <ross.burton@intel.com>
 Signed-off-by: Khem Raj <raj.khem@gmail.com>
 ---
- locale/findlocale.c      | 4 ++--
- locale/loadarchive.c     | 2 +-
- locale/localeinfo.h      | 2 +-
- locale/programs/locale.c | 7 ++++---
- 4 files changed, 8 insertions(+), 7 deletions(-)
+ locale/findlocale.c  | 4 ++--
+ locale/loadarchive.c | 2 +-
+ locale/localeinfo.h  | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/locale/findlocale.c b/locale/findlocale.c
-index ab09122b0c..f42cc75780 100644
---- a/locale/findlocale.c
-+++ b/locale/findlocale.c
-@@ -56,7 +56,7 @@ struct __locale_data *const _nl_C[] attribute_hidden =
+Index: git/locale/findlocale.c
+===================================================================
+--- git.orig/locale/findlocale.c
++++ git/locale/findlocale.c
+@@ -56,7 +56,7 @@ struct __locale_data *const _nl_C[] attr
     which are somehow addressed.  */
  struct loaded_l10nfile *_nl_locale_file_list[__LC_LAST];
  
@@ -31,7 +30,7 @@ index ab09122b0c..f42cc75780 100644
  
  /* Checks if the name is actually present, that is, not NULL and not
     empty.  */
-@@ -166,7 +166,7 @@ _nl_find_locale (const char *locale_path, size_t locale_path_len,
+@@ -166,7 +166,7 @@ _nl_find_locale (const char *locale_path
  
        /* Nothing in the archive.  Set the default path to search below.  */
        locale_path = _nl_default_locale_path;
@@ -40,10 +39,10 @@ index ab09122b0c..f42cc75780 100644
      }
    else
      /* We really have to load some data.  First see whether the name is
-diff --git a/locale/loadarchive.c b/locale/loadarchive.c
-index 4177fc8972..40247b1e68 100644
---- a/locale/loadarchive.c
-+++ b/locale/loadarchive.c
+Index: git/locale/loadarchive.c
+===================================================================
+--- git.orig/locale/loadarchive.c
++++ git/locale/loadarchive.c
 @@ -42,7 +42,7 @@
  
  
@@ -53,11 +52,11 @@ index 4177fc8972..40247b1e68 100644
  
  /* Size of initial mapping window, optimal if large enough to
     cover the header plus the initial locale.  */
-diff --git a/locale/localeinfo.h b/locale/localeinfo.h
-index b3d4da0185..22f9dc1140 100644
---- a/locale/localeinfo.h
-+++ b/locale/localeinfo.h
-@@ -331,7 +331,7 @@ _nl_lookup_word (locale_t l, int category, int item)
+Index: git/locale/localeinfo.h
+===================================================================
+--- git.orig/locale/localeinfo.h
++++ git/locale/localeinfo.h
+@@ -331,7 +331,7 @@ _nl_lookup_word (locale_t l, int categor
  }
  
  /* Default search path if no LOCPATH environment variable.  */
@@ -66,11 +65,11 @@ index b3d4da0185..22f9dc1140 100644
  
  /* Load the locale data for CATEGORY from the file specified by *NAME.
     If *NAME is "", use environment variables as specified by POSIX, and
-diff --git a/locale/programs/locale.c b/locale/programs/locale.c
-index 575b208e82..5ec630c3a4 100644
---- a/locale/programs/locale.c
-+++ b/locale/programs/locale.c
-@@ -632,6 +632,7 @@ nameentcmp (const void *a, const void *b)
+Index: git/locale/programs/locale.c
+===================================================================
+--- git.orig/locale/programs/locale.c
++++ git/locale/programs/locale.c
+@@ -632,6 +632,7 @@ nameentcmp (const void *a, const void *b
  		  ((const struct nameent *) b)->name);
  }
  
@@ -78,7 +77,7 @@ index 575b208e82..5ec630c3a4 100644
  
  static int
  write_archive_locales (void **all_datap, char *linebuf)
-@@ -645,7 +646,7 @@ write_archive_locales (void **all_datap, char *linebuf)
+@@ -645,7 +646,7 @@ write_archive_locales (void **all_datap,
    int fd, ret = 0;
    uint32_t cnt;
  
@@ -87,7 +86,7 @@ index 575b208e82..5ec630c3a4 100644
    if (fd < 0)
      return 0;
  
-@@ -700,8 +701,8 @@ write_archive_locales (void **all_datap, char *linebuf)
+@@ -700,8 +701,8 @@ write_archive_locales (void **all_datap,
  	  if (cnt)
  	    putchar_unlocked ('\n');
  

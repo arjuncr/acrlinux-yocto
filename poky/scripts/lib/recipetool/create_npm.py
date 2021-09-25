@@ -204,9 +204,6 @@ class NpmRecipeHandler(RecipeHandler):
         self._run_npm_install(d, srctree, registry, dev)
         shrinkwrap_file = self._generate_shrinkwrap(d, srctree, dev)
 
-        with open(shrinkwrap_file, "r") as f:
-            shrinkwrap = json.load(f)
-
         if os.path.exists(lock_copy):
             bb.utils.movefile(lock_copy, lock_file)
 
@@ -229,8 +226,7 @@ class NpmRecipeHandler(RecipeHandler):
             value = origvalue.replace("version=" + data["version"], "version=${PV}")
             value = value.replace("version=latest", "version=${PV}")
             values = [line.strip() for line in value.strip('\n').splitlines()]
-            if "dependencies" in shrinkwrap:
-                values.append(url_recipe)
+            values.append(url_recipe)
             return values, None, 4, False
 
         (_, newlines) = bb.utils.edit_metadata(lines_before, ["SRC_URI"], _handle_srcuri)

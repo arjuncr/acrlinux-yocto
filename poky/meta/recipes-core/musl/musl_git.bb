@@ -4,9 +4,9 @@
 require musl.inc
 inherit linuxloader
 
-SRCREV = "e5d2823631bbfebacf48e1a34ed28f28d7cb2570"
+SRCREV = "040c1d16b468c50c04fc94edff521f1637708328"
 
-BASEVER = "1.2.2"
+BASEVER = "1.2.0"
 
 PV = "${BASEVER}+git${SRCPV}"
 
@@ -62,7 +62,7 @@ do_compile() {
 
 do_install() {
 	oe_runmake install DESTDIR='${D}'
-	install -d ${D}${bindir} ${D}/lib ${D}${sysconfdir}
+	install -d ${D}${bindir} ${D}${base_libdir} ${D}${sysconfdir}
         echo "${base_libdir}" > ${D}${sysconfdir}/ld-musl-${MUSL_LDSO_ARCH}.path
         echo "${libdir}" >> ${D}${sysconfdir}/ld-musl-${MUSL_LDSO_ARCH}.path
 	rm -f ${D}${bindir}/ldd ${D}${GLIBC_LDSO}

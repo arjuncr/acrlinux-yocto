@@ -7,7 +7,4 @@ ptestdir=$(dirname "$(readlink -f "$0")")
 export SRC_PATH=$ptestdir
 
 cd $ptestdir/tests
-tests=$(find . -name "test-*" ! -name "*.p")
-for f in $tests; do
-    $f  | sed '/^ok/ s/ok/PASS:/g'
-done
+make -f Makefile.include -k runtest-TESTS | sed '/^ok /s/ok /PASS: /g'

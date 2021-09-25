@@ -15,12 +15,13 @@ PACKAGECONFIG[secureboot] = ",,,"
 SRC_URI = "gitsm://github.com/tianocore/edk2.git;branch=master;protocol=https \
            file://0001-ovmf-update-path-to-native-BaseTools.patch \
            file://0002-BaseTools-makefile-adjust-to-build-in-under-bitbake.patch \
+           file://0003-ovmf-enable-long-path-file.patch \
            file://0004-ovmf-Update-to-latest.patch \
-           file://zero.patch \
+           file://0001-Fix-VLA-parameter-warning.patch \
            "
 
-PV = "edk2-stable202102"
-SRCREV = "ef91b07388e1c0a50c604e5350eeda98428ccea6"
+PV = "edk2-stable202008"
+SRCREV = "06dc822d045c2bb42e497487935485302486e151"
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>edk2-stable.*)"
 
 inherit deploy
@@ -220,6 +221,7 @@ do_deploy[depends] += "${DEPLOYDEP}"
 
 do_deploy() {
 }
+do_deploy[cleandirs] = "${DEPLOYDIR}"
 do_deploy_class-target() {
     # For use with "runqemu ovmf".
     for i in \

@@ -19,15 +19,12 @@ PACKAGECONFIG ??= "tipc elf devlink"
 PACKAGECONFIG[tipc] = ",,libmnl,"
 PACKAGECONFIG[elf] = ",,elfutils,"
 PACKAGECONFIG[devlink] = ",,libmnl,"
-PACKAGECONFIG[rdma] = ",,libmnl,"
-
-IPROUTE2_MAKE_SUBDIRS = "lib tc ip bridge misc genl ${@bb.utils.filter('PACKAGECONFIG', 'devlink tipc rdma', d)}"
 
 EXTRA_OEMAKE = "\
     CC='${CC}' \
     KERNEL_INCLUDE=${STAGING_INCDIR} \
     DOCDIR=${docdir}/iproute2 \
-    SUBDIRS='${IPROUTE2_MAKE_SUBDIRS}' \
+    SUBDIRS='lib tc ip bridge misc genl ${@bb.utils.filter('PACKAGECONFIG', 'devlink tipc', d)}' \
     SBINDIR='${base_sbindir}' \
     LIBDIR='${libdir}' \
 "
@@ -49,22 +46,17 @@ do_install () {
 # The .so files in iproute2-tc are modules, not traditional libraries
 INSANE_SKIP_${PN}-tc = "dev-so"
 
-IPROUTE2_PACKAGES =+ "\
+PACKAGES =+ "\
     ${PN}-devlink \
     ${PN}-genl \
     ${PN}-ifstat \
-    ${PN}-ip \
     ${PN}-lnstat \
     ${PN}-nstat \
     ${PN}-rtacct \
     ${PN}-ss \
     ${PN}-tc \
     ${PN}-tipc \
-    ${PN}-rdma \
 "
-
-PACKAGE_BEFORE_PN = "${IPROUTE2_PACKAGES}"
-RDEPENDS_${PN} += "${PN}-ip"
 
 FILES_${PN}-tc = "${base_sbindir}/tc* \
                   ${libdir}/tc/*.so"
@@ -72,16 +64,14 @@ FILES_${PN}-lnstat = "${base_sbindir}/lnstat \
                       ${base_sbindir}/ctstat \
                       ${base_sbindir}/rtstat"
 FILES_${PN}-ifstat = "${base_sbindir}/ifstat"
-FILES_${PN}-ip = "${base_sbindir}/ip.${PN} ${sysconfdir}/iproute2"
 FILES_${PN}-genl = "${base_sbindir}/genl"
 FILES_${PN}-rtacct = "${base_sbindir}/rtacct"
 FILES_${PN}-nstat = "${base_sbindir}/nstat"
 FILES_${PN}-ss = "${base_sbindir}/ss"
 FILES_${PN}-tipc = "${base_sbindir}/tipc"
 FILES_${PN}-devlink = "${base_sbindir}/devlink"
-FILES_${PN}-rdma = "${base_sbindir}/rdma"
 
-ALTERNATIVE_${PN}-ip = "ip"
+ALTERNATIVE_${PN} = "ip"
 ALTERNATIVE_TARGET[ip] = "${base_sbindir}/ip.${BPN}"
 ALTERNATIVE_LINK_NAME[ip] = "${base_sbindir}/ip"
 ALTERNATIVE_PRIORITY = "100"

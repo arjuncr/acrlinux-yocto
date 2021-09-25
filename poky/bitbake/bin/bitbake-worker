@@ -118,9 +118,7 @@ def worker_child_fire(event, d):
     data = b"<event>" + pickle.dumps(event) + b"</event>"
     try:
         worker_pipe_lock.acquire()
-        while(len(data)):
-            written = worker_pipe.write(data)
-            data = data[written:]
+        worker_pipe.write(data)
         worker_pipe_lock.release()
     except IOError:
         sigterm_handler(None, None)
@@ -150,15 +148,11 @@ def fork_off_task(cfg, data, databuilder, workerdata, fn, task, taskname, taskha
 
     taskdep = workerdata["taskdeps"][fn]
     if 'umask' in taskdep and taskname in taskdep['umask']:
-        umask = taskdep['umask'][taskname]
-    elif workerdata["umask"]:
-        umask = workerdata["umask"]
-    if umask:
         # umask might come in as a number or text string..
         try:
-             umask = int(umask, 8)
+             umask = int(taskdep['umask'][taskname],8)
         except TypeError:
-             pass
+             umask = taskdep['umask'][taskname]
 
     dry_run = cfg.dry_run or dry_run_exec
 
@@ -173,7 +167,7 @@ def fork_off_task(cfg, data, databuilder, workerdata, fn, task, taskname, taskha
         fakedirs = (workerdata["fakerootdirs"][fn] or "").split()
         for p in fakedirs:
             bb.utils.mkdirhier(p)
-        logger.debug2('Running %s:%s under fakeroot, fakedirs: %s' %
+        logger.debug(2, 'Running %s:%s under fakeroot, fakedirs: %s' %
                         (fn, taskname, ', '.join(fakedirs)))
     else:
         envvars = (workerdata["fakerootnoenv"][fn] or "").split()
@@ -327,9 +321,7 @@ class runQueueWorkerPipe():
         end = len(self.queue)
         index = self.queue.find(b"</event>")
         while index != -1:
-            msg = self.queue[:index+8]
-            assert msg.startswith(b"<event>") and msg.count(b"<event>") == 1
-            worker_fire_prepickled(msg)
+            worker_fire_prepickled(self.queue[:index+8])
             self.queue = self.queue[index+8:]
             index = self.queue.find(b"</event>")
         return (end > start)
@@ -421,9 +413,9 @@ class BitbakeWorker(object):
 
     def handle_workerdata(self, data):
         self.workerdata = pickle.loads(data)
-        bb.build.verboseShellLogging = self.workerdata["build_verbose_shell"]
-        bb.build.verboseStdoutLogging = self.workerdata["build_verbose_stdout"]
         bb.msg.loggerDefaultLogLevel = self.workerdata["logdefaultlevel"]
+        bb.msg.loggerDefaultVerbose = self.workerdata["logdefaultverbose"]
+        bb.msg.loggerVerboseLogs = self.workerdata["logdefaultverboselogs"]
         bb.msg.loggerDefaultDomains = self.workerdata["logdefaultdomain"]
         for mc in self.databuilder.mcdata:
             self.databuilder.mcdata[mc].setVar("PRSERV_HOST", self.workerdata["prhost"])

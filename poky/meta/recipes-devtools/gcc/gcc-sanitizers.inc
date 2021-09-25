@@ -35,11 +35,6 @@ do_compile () {
 do_install () {
     cd ${B}/${TARGET_SYS}/libsanitizer/
     oe_runmake 'DESTDIR=${D}' MULTIBUILDTOP=${B}/${TARGET_SYS}/libsanitizer/ install
-    if [ -d ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include ]; then
-	install -d ${D}${libdir}/${TARGET_SYS}/${BINV}/include
-	mv ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include/* ${D}${libdir}/${TARGET_SYS}/${BINV}/include
-	rmdir --ignore-fail-on-non-empty -p ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include
-    fi
     if [ -d ${D}${infodir} ]; then
         rmdir --ignore-fail-on-non-empty -p ${D}${infodir}
     fi
@@ -83,11 +78,10 @@ COMPATIBLE_HOST = '(x86_64|i.86|powerpc|sparc|s390|arm|aarch64).*-linux'
 # musl is currently broken entirely
 COMPATIBLE_HOST_libc-musl = 'null'
 
-FILES_libasan += "${libdir}/libasan.so.* ${libdir}/libhwasan.so.*"
+FILES_libasan += "${libdir}/libasan.so.*"
 FILES_libasan-dev += "\
     ${libdir}/libasan_preinit.o \
     ${libdir}/libasan.so \
-    ${libdir}/libhwasan.so \
     ${libdir}/libasan.la \
 "
 FILES_libasan-staticdev += "${libdir}/libasan.a"
@@ -115,4 +109,4 @@ FILES_libtsan-dev += "\
 "
 FILES_libtsan-staticdev += "${libdir}/libtsan.a"
 
-FILES_${PN} = "${libdir}/*.spec ${libdir}/${TARGET_SYS}/${BINV}/include/sanitizer/*.h"
+FILES_${PN} = "${libdir}/*.spec ${libdir}/gcc/${TARGET_SYS}/${BINV}/include/sanitizer/*.h"

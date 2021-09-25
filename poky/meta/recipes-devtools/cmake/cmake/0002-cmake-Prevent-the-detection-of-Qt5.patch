@@ -1,4 +1,4 @@
-From 98abade8cc119e076e4c5f1461c5188f6d49c1d8 Mon Sep 17 00:00:00 2001
+From 5a86c7fa987bd407f228176df2abeffd015be9ea Mon Sep 17 00:00:00 2001
 From: Otavio Salvador <otavio@ossystems.com.br>
 Date: Wed, 17 Jan 2018 10:02:14 -0200
 Subject: [PATCH] cmake: Prevent the detection of Qt5
@@ -25,31 +25,31 @@ Signed-off-by: Otavio Salvador <otavio@ossystems.com.br>
  7 files changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/Source/QtDialog/CMakeLists.txt b/Source/QtDialog/CMakeLists.txt
-index 452a303..d0a9fb4 100644
+index cb89d19..9e68981 100644
 --- a/Source/QtDialog/CMakeLists.txt
 +++ b/Source/QtDialog/CMakeLists.txt
 @@ -3,7 +3,7 @@
  
  project(QtDialog)
  CMake_OPTIONAL_COMPONENT(cmake-gui)
--find_package(Qt5Widgets REQUIRED)
-+#find_package(Qt5Widgets REQUIRED)
- 
- set(CMake_QT_EXTRA_LIBRARIES)
- 
+-find_package(Qt5Widgets QUIET)
++#find_package(Qt5Widgets QUIET)
+ if (Qt5Widgets_FOUND)
+   include_directories(${Qt5Widgets_INCLUDE_DIRS})
+   add_definitions(${Qt5Widgets_DEFINITONS})
 diff --git a/Tests/CMakeLists.txt b/Tests/CMakeLists.txt
-index 1fb47cb..e022229 100644
+index 57fa7fc..d50c146 100644
 --- a/Tests/CMakeLists.txt
 +++ b/Tests/CMakeLists.txt
-@@ -251,7 +251,7 @@ if(BUILD_TESTING)
+@@ -1329,7 +1329,7 @@ ${CMake_SOURCE_DIR}/Utilities/Release/push.bash --dir dev -- '${CMake_BUILD_NIGH
      set(CMake_TEST_Qt5 1)
    endif()
    if(CMake_TEST_Qt5)
 -    find_package(Qt5Widgets QUIET NO_MODULE)
 +    #find_package(Qt5Widgets QUIET NO_MODULE)
    endif()
- 
-   if(NOT CMake_TEST_EXTERNAL_CMAKE)
+   if(CMake_TEST_Qt5 AND Qt5Widgets_FOUND)
+     add_subdirectory(Qt5Autogen)
 diff --git a/Tests/Qt4And5Automoc/CMakeLists.txt b/Tests/Qt4And5Automoc/CMakeLists.txt
 index ad74961..a9dd74b 100644
 --- a/Tests/Qt4And5Automoc/CMakeLists.txt
@@ -96,11 +96,11 @@ index c08efc4..87e25d9 100644
  set(CMAKE_CXX_STANDARD 11)
  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output/bin)
 diff --git a/Tests/RunCMake/CMakeLists.txt b/Tests/RunCMake/CMakeLists.txt
-index 370dd76..6bacbff 100644
+index 6b2f117..1002005 100644
 --- a/Tests/RunCMake/CMakeLists.txt
 +++ b/Tests/RunCMake/CMakeLists.txt
-@@ -473,7 +473,7 @@ if(NOT WIN32)
- endif ()
+@@ -376,7 +376,7 @@ else()
+ endif()
  
  find_package(Qt4 QUIET)
 -find_package(Qt5Core QUIET)

@@ -13,15 +13,13 @@
 
 LOAD_MODULE=modprobe
 [ -f /proc/modules ] || exit 0
+[ -f /etc/modules ] || [ -d /etc/modules-load.d ] || exit 0
+[ -e /sbin/modprobe ] || LOAD_MODULE=insmod
 
-# Test if modules.dep exists and has a size greater than zero
-if [ ! -s /lib/modules/`uname -r`/modules.dep ]; then
+if [ ! -f /lib/modules/`uname -r`/modules.dep ]; then
 	[ "$VERBOSE" != no ] && echo "Calculating module dependencies ..."
 	depmod -a
 fi
-
-[ -f /etc/modules ] || [ -d /etc/modules-load.d ] || exit 0
-[ -e /sbin/modprobe ] || LOAD_MODULE=insmod
 
 loaded_modules=" "
 

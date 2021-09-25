@@ -151,6 +151,9 @@ def main():
     func = getattr(args, 'func', None)
     if func:
         client = hashserv.create_client(args.address)
+        # Try to establish a connection to the server now to detect failures
+        # early
+        client.connect()
 
         return func(args, client)
 

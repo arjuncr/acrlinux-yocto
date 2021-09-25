@@ -281,7 +281,10 @@ python do_ar_configured() {
         # ${STAGING_DATADIR}/aclocal/libtool.m4, so we can't re-run the
         # do_configure, we archive the already configured ${S} to
         # instead of.
-        elif pn != 'libtool-native':
+        # The kernel class functions require it to be on work-shared, we
+        # don't unpack, patch, configure again, just archive the already
+        # configured ${S}
+        elif not (pn == 'libtool-native' or is_work_shared(d)):
             def runTask(task):
                 prefuncs = d.getVarFlag(task, 'prefuncs') or ''
                 for func in prefuncs.split():
@@ -345,12 +348,13 @@ python do_ar_mirror() {
 
     fetcher = bb.fetch2.Fetch(src_uri, d)
 
-    for ud in fetcher.expanded_urldata():
-        if is_excluded(ud.url):
-            bb.note('Skipping excluded url: %s' % (ud.url))
+    for url in fetcher.urls:
+        if is_excluded(url):
+            bb.note('Skipping excluded url: %s' % (url))
             continue
 
-        bb.note('Archiving url: %s' % (ud.url))
+        bb.note('Archiving url: %s' % (url))
+        ud = fetcher.ud[url]
         ud.setup_localpath(d)
         localpath = None
 
@@ -366,7 +370,7 @@ python do_ar_mirror() {
         if len(ud.mirrortarballs) and not localpath:
             bb.warn('Mirror tarballs are listed for a source but none are present. ' \
                     'Falling back to original download.\n' \
-                    'SRC_URI = %s' % (ud.url))
+                    'SRC_URI = %s' % (url))
 
         # Check original download
         if not localpath:
@@ -375,7 +379,7 @@ python do_ar_mirror() {
 
         if not localpath or not os.path.exists(localpath):
             bb.fatal('Original download is missing for a source.\n' \
-                        'SRC_URI = %s' % (ud.url))
+                        'SRC_URI = %s' % (url))
 
         # We now have an appropriate localpath
         bb.note('Copying source mirror')
@@ -482,6 +486,9 @@ python do_unpack_and_patch() {
         src = d.getVar('S').rstrip('/')
         src_orig = '%s.orig' % src
         oe.path.copytree(src, src_orig)
+
+    if bb.data.inherits_class('dos2unix', d):
+        bb.build.exec_func('do_convert_crlf_to_lf', d)
 
     # Make sure gcc and kernel sources are patched only once
     if not (d.getVar('SRC_URI') == "" or is_work_shared(d)):

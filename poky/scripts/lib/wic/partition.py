@@ -339,6 +339,8 @@ class Partition():
             label_str = "-n %s" % self.label
 
         size_str = ""
+        if self.fstype == 'msdos':
+            size_str = "-F 16" # FAT 16
 
         extraopts = self.mkfs_extraopts or '-S 512'
 
@@ -420,6 +422,8 @@ class Partition():
             label_str = "-n %s" % self.label
 
         size_str = ""
+        if self.fstype == 'msdos':
+            size_str = "-F 16" # FAT 16
 
         extraopts = self.mkfs_extraopts or '-S 512'
 

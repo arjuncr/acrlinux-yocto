@@ -9,7 +9,7 @@ PROVIDES_append_class-native = " git-replacement-native"
 
 SRC_URI = "${KERNELORG_MIRROR}/software/scm/git/git-${PV}.tar.gz;name=tarball \
            ${KERNELORG_MIRROR}/software/scm/git/git-manpages-${PV}.tar.gz;name=manpages \
-           file://fixsort.patch \
+	   file://CVE-2021-21300.patch \
 "
 
 S = "${WORKDIR}/git-${PV}"
@@ -24,7 +24,6 @@ PACKAGECONFIG[svn] = ""
 
 EXTRA_OECONF = "--with-perl=${STAGING_BINDIR_NATIVE}/perl-native/perl \
 		--without-tcltk \
-		--without-iconv \
 "
 EXTRA_OECONF_append_class-nativesdk = " --with-gitconfig=/etc/gitconfig "
 

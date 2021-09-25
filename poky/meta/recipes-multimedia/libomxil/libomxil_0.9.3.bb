@@ -26,8 +26,6 @@ EXTRA_OECONF += "--disable-doc --disable-Werror"
 
 PROVIDES += "virtual/libomxil"
 
-CFLAGS += "-fcommon"
-
 PACKAGECONFIG ??= ""
 
 PACKAGECONFIG[amr] = "--enable-amr,,"

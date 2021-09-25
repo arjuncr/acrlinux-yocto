@@ -10,13 +10,9 @@ class Template(string.Template):
 class Environ():
     def __getitem__(self, name):
         val = os.environ[name]
-        val = val.split()
-        if len(val) > 1:
-            val = ["'%s'" % x for x in val]
-            val = ', '.join(val)
-            val = '[%s]' % val
-        elif val:
-            val = "'%s'" % val.pop()
+        val = ["'%s'" % x for x in val.split()]
+        val = ', '.join(val)
+        val = '[%s]' % val
         return val
 
 try:

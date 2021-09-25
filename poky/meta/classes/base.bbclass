@@ -389,11 +389,6 @@ python () {
     oe.utils.features_backfill("DISTRO_FEATURES", d)
     oe.utils.features_backfill("MACHINE_FEATURES", d)
 
-    if d.getVar("S")[-1] == '/':
-        bb.warn("Recipe %s sets S variable with trailing slash '%s', remove it" % (d.getVar("PN"), d.getVar("S")))
-    if d.getVar("B")[-1] == '/':
-        bb.warn("Recipe %s sets B variable with trailing slash '%s', remove it" % (d.getVar("PN"), d.getVar("B")))
-
     if os.path.normpath(d.getVar("WORKDIR")) != os.path.normpath(d.getVar("S")):
         d.appendVar("PSEUDO_IGNORE_PATHS", ",${S}")
     if os.path.normpath(d.getVar("WORKDIR")) != os.path.normpath(d.getVar("B")):
@@ -506,10 +501,15 @@ python () {
     # in order to capture permissions, owners, groups and special files
     if not bb.data.inherits_class('native', d) and not bb.data.inherits_class('cross', d):
         d.appendVarFlag('do_prepare_recipe_sysroot', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
+        d.setVarFlag('do_unpack', 'umask', '022')
+        d.setVarFlag('do_configure', 'umask', '022')
+        d.setVarFlag('do_compile', 'umask', '022')
         d.appendVarFlag('do_install', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_install', 'fakeroot', '1')
+        d.setVarFlag('do_install', 'umask', '022')
         d.appendVarFlag('do_package', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_package', 'fakeroot', '1')
+        d.setVarFlag('do_package', 'umask', '022')
         d.setVarFlag('do_package_setscene', 'fakeroot', '1')
         d.appendVarFlag('do_package_setscene', 'depends', ' virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_devshell', 'fakeroot', '1')
@@ -576,7 +576,8 @@ python () {
                 if unskipped_pkgs:
                     for pkg in skipped_pkgs:
                         bb.debug(1, "Skipping the package %s at do_rootfs because of incompatible license(s): %s" % (pkg, ' '.join(skipped_pkgs[pkg])))
-                        d.setVar('LICENSE_EXCLUSION-' + pkg, ' '.join(skipped_pkgs[pkg]))
+                        mlprefix = d.getVar('MLPREFIX')
+                        d.setVar('LICENSE_EXCLUSION-' + mlprefix + pkg, ' '.join(skipped_pkgs[pkg]))
                     for pkg in unskipped_pkgs:
                         bb.debug(1, "Including the package %s" % pkg)
                 else:
@@ -591,40 +592,38 @@ python () {
 
     needsrcrev = False
     srcuri = d.getVar('SRC_URI')
-    for uri_string in srcuri.split():
-        uri = bb.fetch.URI(uri_string)
-        # Also check downloadfilename as the URL path might not be useful for sniffing
-        path = uri.params.get("downloadfilename", uri.path)
+    for uri in srcuri.split():
+        (scheme, _ , path) = bb.fetch.decodeurl(uri)[:3]
 
         # HTTP/FTP use the wget fetcher
-        if uri.scheme in ("http", "https", "ftp"):
+        if scheme in ("http", "https", "ftp"):
             d.appendVarFlag('do_fetch', 'depends', ' wget-native:do_populate_sysroot')
 
         # Svn packages should DEPEND on subversion-native
-        if uri.scheme == "svn":
+        if scheme == "svn":
             needsrcrev = True
             d.appendVarFlag('do_fetch', 'depends', ' subversion-native:do_populate_sysroot')
 
         # Git packages should DEPEND on git-native
-        elif uri.scheme in ("git", "gitsm"):
+        elif scheme in ("git", "gitsm"):
             needsrcrev = True
             d.appendVarFlag('do_fetch', 'depends', ' git-native:do_populate_sysroot')
 
         # Mercurial packages should DEPEND on mercurial-native
-        elif uri.scheme == "hg":
+        elif scheme == "hg":
             needsrcrev = True
             d.appendVar("EXTRANATIVEPATH", ' python3-native ')
             d.appendVarFlag('do_fetch', 'depends', ' mercurial-native:do_populate_sysroot')
 
         # Perforce packages support SRCREV = "${AUTOREV}"
-        elif uri.scheme == "p4":
+        elif scheme == "p4":
             needsrcrev = True
 
         # OSC packages should DEPEND on osc-native
-        elif uri.scheme == "osc":
+        elif scheme == "osc":
             d.appendVarFlag('do_fetch', 'depends', ' osc-native:do_populate_sysroot')
 
-        elif uri.scheme == "npm":
+        elif scheme == "npm":
             d.appendVarFlag('do_fetch', 'depends', ' nodejs-native:do_populate_sysroot')
 
         # *.lz4 should DEPEND on lz4-native for unpacking

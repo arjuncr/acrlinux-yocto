@@ -21,8 +21,8 @@ RDEPENDS_${PN} = "\
     coreutils \
     cpio \
     ${@bb.utils.contains("DISTRO_FEATURES", "systemd", "", "debianutils-run-parts", d)} \
-    dhcpcd \
-    ${@bb.utils.contains("DISTRO_FEATURES", "systemd", "", "kea", d)} \
+    dhcp-client \
+    ${@bb.utils.contains("DISTRO_FEATURES", "systemd", "", "dhcp-server", d)} \
     diffutils \
     ${@bb.utils.contains("DISTRO_FEATURES", "systemd", "", "dpkg-start-stop", d)} \
     e2fsprogs \

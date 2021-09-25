@@ -569,37 +569,6 @@ password, and fetches a Revision based on a Label: ::
 
    You should always set S to "${WORKDIR}/p4" in your recipe.
 
-By default, the fetcher strips the depot location from the local file paths. In
-the above example, the content of ``example-depot/main/source/`` will be placed
-in ``${WORKDIR}/p4``.  For situations where preserving parts of the remote depot
-paths locally is desirable, the fetcher supports two parameters:
-
-- *"module":*
-    The top-level depot location or directory to fetch. The value of this
-    parameter can also point to a single file within the depot, in which case
-    the local file path will include the module path.
-- *"remotepath":*
-    When used with the value "``keep``", the fetcher will mirror the full depot
-    paths locally for the specified location, even in combination with the
-    ``module`` parameter.
-
-Here is an example use of the the ``module`` parameter: ::
-
-   SRC_URI = "p4://user:passwd@example-depot/main;module=source/..."
-
-In this case, the content of the top-level directory ``source/`` will be fetched
-to ``${P4DIR}``, including the directory itself.  The top-level directory will
-be accesible at ``${P4DIR}/source/``.
-
-Here is an example use of the the ``remotepath`` parameter: ::
-
-   SRC_URI = "p4://user:passwd@example-depot/main;module=source/...;remotepath=keep"
-
-In this case, the content of the top-level directory ``source/`` will be fetched
-to ``${P4DIR}``, but the complete depot paths will be mirrored locally. The
-top-level directory will be accessible at
-``${P4DIR}/example-depot/main/source/``.
-
 .. _repo-fetcher:
 
 Repo Fetcher (``repo://``)
@@ -623,34 +592,6 @@ Here are some example URLs: ::
 
    SRC_URI = "repo://REPOROOT;protocol=git;branch=some_branch;manifest=my_manifest.xml"
    SRC_URI = "repo://REPOROOT;protocol=file;branch=some_branch;manifest=my_manifest.xml"
-
-.. _az-fetcher:
-
-Az Fetcher (``az://``)
---------------------------
-
-This submodule fetches data from an
-`Azure Storage account <https://docs.microsoft.com/en-us/azure/storage/>`__ ,
-it inherits its functionality from the HTTP wget fetcher, but modifies its
-behavior to accomodate the usage of a
-`Shared Access Signature (SAS) <https://docs.microsoft.com/en-us/azure/storage/common/storage-sas-overview>`__
-for non-public data.
-
-Such functionality is set by the variable:
-
--  :term:`AZ_SAS`: The Azure Storage Shared Access Signature provides secure
-   delegate access to resources, if this variable is set, the Az Fetcher will
-   use it when fetching artifacts from the cloud.
-
-You can specify the AZ_SAS variable as shown below: ::
-
-   AZ_SAS = "se=2021-01-01&sp=r&sv=2018-11-09&sr=c&skoid=<skoid>&sig=<signature>"
-
-Here is an example URL: ::
-
-   SRC_URI = "az://<azure-storage-account>.blob.core.windows.net/<foo_container>/<bar_file>"
-
-It can also be used when setting mirrors definitions using the :term:`PREMIRRORS` variable.
 
 Other Fetchers
 --------------

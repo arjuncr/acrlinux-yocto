@@ -25,7 +25,6 @@ SRC_URI = "git://github.com/unfs3/unfs3.git;protocol=https \
            file://0001-daemon.c-Libtirpc-porting-fixes.patch \
            file://0001-attr-fix-utime-for-symlink.patch \
            file://0001-Add-listen-action-for-a-tcp-socket.patch \
-           file://no-yywrap.patch \
           "
 SRCREV = "c12a5c69a8d59be6916cbd0e0f41c159f1962425"
 UPSTREAM_CHECK_GITTAGREGEX = "unfs3\-(?P<pver>.+)"
@@ -37,7 +36,7 @@ BBCLASSEXTEND = "native nativesdk"
 inherit autotools
 EXTRA_OECONF_append_class-native = " --sbindir=${bindir}"
 CFLAGS_append = " -I${STAGING_INCDIR}/tirpc"
-LDFLAGS_append = " -ltirpc"
+EXTRA_OECONF_append = " LIBS=-ltirpc"
 
 # Turn off these header detects else the inode search
 # will walk entire file systems and this is a real problem

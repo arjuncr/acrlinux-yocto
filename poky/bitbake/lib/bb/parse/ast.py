@@ -34,7 +34,7 @@ class IncludeNode(AstNode):
         Include the file and evaluate the statements
         """
         s = data.expand(self.what_file)
-        logger.debug2("CONF %s:%s: including %s", self.filename, self.lineno, s)
+        logger.debug(2, "CONF %s:%s: including %s", self.filename, self.lineno, s)
 
         # TODO: Cache those includes... maybe not here though
         if self.force:
@@ -97,6 +97,7 @@ class DataNode(AstNode):
     def eval(self, data):
         groupd = self.groupd
         key = groupd["var"]
+        key = key.replace(":", "_")
         loginfo = {
             'variable': key,
             'file': self.filename,
@@ -207,6 +208,7 @@ class ExportFuncsNode(AstNode):
     def eval(self, data):
 
         for func in self.n:
+            func = func.replace(":", "_")
             calledfunc = self.classname + "_" + func
 
             if data.getVar(func, False) and not data.getVarFlag(func, 'export_func', False):
@@ -244,14 +246,12 @@ class AddTaskNode(AstNode):
         bb.build.addtask(self.func, self.before, self.after, data)
 
 class DelTaskNode(AstNode):
-    def __init__(self, filename, lineno, tasks):
+    def __init__(self, filename, lineno, func):
         AstNode.__init__(self, filename, lineno)
-        self.tasks = tasks
+        self.func = func
 
     def eval(self, data):
-        tasks = data.expand(self.tasks).split()
-        for task in tasks:
-            bb.build.deltask(task, data)
+        bb.build.deltask(self.func, data)
 
 class BBHandlerNode(AstNode):
     def __init__(self, filename, lineno, fns):
@@ -307,7 +307,7 @@ def handleAddTask(statements, filename, lineno, m):
     statements.append(AddTaskNode(filename, lineno, func, before, after))
 
 def handleDelTask(statements, filename, lineno, m):
-    func = m.group(1)
+    func = m.group("func")
     if func is None:
         return
 
@@ -335,14 +335,11 @@ def finalize(fn, d, variant = None):
             if not handlerfn:
                 bb.fatal("Undefined event handler function '%s'" % var)
             handlerln = int(d.getVarFlag(var, "lineno", False))
-            bb.event.register(var, d.getVar(var, False), (d.getVarFlag(var, "eventmask") or "").split(), handlerfn, handlerln, data=d)
+            bb.event.register(var, d.getVar(var, False), (d.getVarFlag(var, "eventmask") or "").split(), handlerfn, handlerln)
 
         bb.event.fire(bb.event.RecipePreFinalise(fn), d)
 
         bb.data.expandKeys(d)
-
-        bb.event.fire(bb.event.RecipePostKeyExpansion(fn), d)
-
         runAnonFuncs(d)
 
         tasklist = d.getVar('__BBTASKS', False) or []
@@ -376,7 +373,7 @@ def _create_variants(datastores, names, function, onlyfinalise):
 def multi_finalize(fn, d):
     appends = (d.getVar("__BBAPPEND") or "").split()
     for append in appends:
-        logger.debug("Appending .bbappend file %s to %s", append, fn)
+        logger.debug(1, "Appending .bbappend file %s to %s", append, fn)
         bb.parse.BBHandler.handle(append, d, True)
 
     onlyfinalise = d.getVar("__ONLYFINALISE", False)

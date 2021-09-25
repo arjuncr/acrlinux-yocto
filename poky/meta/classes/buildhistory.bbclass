@@ -7,8 +7,6 @@
 # Copyright (C) 2007-2011 Koen Kooi <koen@openembedded.org>
 #
 
-inherit image-artifact-names
-
 BUILDHISTORY_FEATURES ?= "image package sdk"
 BUILDHISTORY_DIR ?= "${TOPDIR}/buildhistory"
 BUILDHISTORY_DIR_IMAGE = "${BUILDHISTORY_DIR}/images/${MACHINE_ARCH}/${TCLIBC}/${IMAGE_BASENAME}"
@@ -115,9 +113,6 @@ python buildhistory_emit_pkghistory() {
             self.packages = ""
             self.srcrev = ""
             self.layer = ""
-            self.license = ""
-            self.config = ""
-            self.src_uri = ""
 
 
     class PackageInfo:
@@ -219,7 +214,6 @@ python buildhistory_emit_pkghistory() {
     pv = d.getVar('PV')
     pr = d.getVar('PR')
     layer = bb.utils.get_file_layer(d.getVar('FILE'), d)
-    license = d.getVar('LICENSE')
 
     pkgdata_dir = d.getVar('PKGDATA_DIR')
     packages = ""
@@ -260,20 +254,22 @@ python buildhistory_emit_pkghistory() {
     rcpinfo.depends = sortlist(oe.utils.squashspaces(d.getVar('DEPENDS') or ""))
     rcpinfo.packages = packages
     rcpinfo.layer = layer
-    rcpinfo.license = license
-    rcpinfo.config = sortlist(oe.utils.squashspaces(d.getVar('PACKAGECONFIG') or ""))
-    rcpinfo.src_uri = oe.utils.squashspaces(d.getVar('SRC_URI') or "")
     write_recipehistory(rcpinfo, d)
 
-    bb.build.exec_func("read_subpackage_metadata", d)
-
+    pkgdest = d.getVar('PKGDEST')
     for pkg in packagelist:
-        localdata = d.createCopy()
-        localdata.setVar('OVERRIDES', d.getVar("OVERRIDES", False) + ":" + pkg)
+        pkgdata = {}
+        with open(os.path.join(pkgdata_dir, 'runtime', pkg)) as f:
+            for line in f.readlines():
+                item = line.rstrip('\n').split(': ', 1)
+                key = item[0]
+                if key.endswith('_' + pkg):
+                    key = key[:-len(pkg)-1]
+                pkgdata[key] = item[1].encode('latin-1').decode('unicode_escape')
 
-        pkge = localdata.getVar("PKGE") or '0'
-        pkgv = localdata.getVar("PKGV")
-        pkgr = localdata.getVar("PKGR")
+        pkge = pkgdata.get('PKGE', '0')
+        pkgv = pkgdata['PKGV']
+        pkgr = pkgdata['PKGR']
         #
         # Find out what the last version was
         # Make sure the version did not decrease
@@ -290,31 +286,31 @@ python buildhistory_emit_pkghistory() {
 
         pkginfo = PackageInfo(pkg)
         # Apparently the version can be different on a per-package basis (see Python)
-        pkginfo.pe = localdata.getVar("PE") or '0'
-        pkginfo.pv = localdata.getVar("PV")
-        pkginfo.pr = localdata.getVar("PR")
-        pkginfo.pkg = localdata.getVar("PKG")
+        pkginfo.pe = pkgdata.get('PE', '0')
+        pkginfo.pv = pkgdata['PV']
+        pkginfo.pr = pkgdata['PR']
+        pkginfo.pkg = pkgdata['PKG']
         pkginfo.pkge = pkge
         pkginfo.pkgv = pkgv
         pkginfo.pkgr = pkgr
-        pkginfo.rprovides = sortpkglist(oe.utils.squashspaces(localdata.getVar("RPROVIDES") or ""))
-        pkginfo.rdepends = sortpkglist(oe.utils.squashspaces(localdata.getVar("RDEPENDS") or ""))
-        pkginfo.rrecommends = sortpkglist(oe.utils.squashspaces(localdata.getVar("RRECOMMENDS") or ""))
-        pkginfo.rsuggests = sortpkglist(oe.utils.squashspaces(localdata.getVar("RSUGGESTS") or ""))
-        pkginfo.replaces = sortpkglist(oe.utils.squashspaces(localdata.getVar("RREPLACES") or ""))
-        pkginfo.rconflicts = sortpkglist(oe.utils.squashspaces(localdata.getVar("RCONFLICTS") or ""))
-        pkginfo.files = oe.utils.squashspaces(localdata.getVar("FILES") or "")
+        pkginfo.rprovides = sortpkglist(oe.utils.squashspaces(pkgdata.get('RPROVIDES', "")))
+        pkginfo.rdepends = sortpkglist(oe.utils.squashspaces(pkgdata.get('RDEPENDS', "")))
+        pkginfo.rrecommends = sortpkglist(oe.utils.squashspaces(pkgdata.get('RRECOMMENDS', "")))
+        pkginfo.rsuggests = sortpkglist(oe.utils.squashspaces(pkgdata.get('RSUGGESTS', "")))
+        pkginfo.rreplaces = sortpkglist(oe.utils.squashspaces(pkgdata.get('RREPLACES', "")))
+        pkginfo.rconflicts = sortpkglist(oe.utils.squashspaces(pkgdata.get('RCONFLICTS', "")))
+        pkginfo.files = oe.utils.squashspaces(pkgdata.get('FILES', ""))
         for filevar in pkginfo.filevars:
-            pkginfo.filevars[filevar] = localdata.getVar(filevar) or ""
+            pkginfo.filevars[filevar] = pkgdata.get(filevar, "")
 
         # Gather information about packaged files
-        val = localdata.getVar('FILES_INFO') or ''
+        val = pkgdata.get('FILES_INFO', '')
         dictval = json.loads(val)
         filelist = list(dictval.keys())
         filelist.sort()
         pkginfo.filelist = " ".join([shlex.quote(x) for x in filelist])
 
-        pkginfo.size = int(localdata.getVar('PKGSIZE') or '0')
+        pkginfo.size = int(pkgdata['PKGSIZE'])
 
         write_pkghistory(pkginfo, d)
 
@@ -372,9 +368,6 @@ def write_recipehistory(rcpinfo, d):
         f.write(u"DEPENDS = %s\n" %  rcpinfo.depends)
         f.write(u"PACKAGES = %s\n" %  rcpinfo.packages)
         f.write(u"LAYER = %s\n" %  rcpinfo.layer)
-        f.write(u"LICENSE = %s\n" %  rcpinfo.license)
-        f.write(u"CONFIG = %s\n" %  rcpinfo.config)
-        f.write(u"SRC_URI = %s\n" %  rcpinfo.src_uri)
 
     write_latest_srcrev(d, pkghistdir)
 

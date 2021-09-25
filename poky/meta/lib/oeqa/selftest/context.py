@@ -188,7 +188,6 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
                 help='Keep the test build directory even if all tests pass')
 
         parser.add_argument('-B', '--newbuilddir', help='New build directory to use for tests.')
-        parser.add_argument('-v', '--verbose', action='store_true')
         parser.set_defaults(func=self.run)
 
     def _get_available_machines(self):

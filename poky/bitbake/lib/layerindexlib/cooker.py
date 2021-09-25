@@ -4,7 +4,6 @@
 #
 
 import logging
-import os
 
 from collections import defaultdict
 
@@ -74,7 +73,7 @@ class CookerPlugin(layerindexlib.plugin.IndexPlugin):
         d = self.layerindex.data
 
         if not branches:
-            raise layerindexlib.LayerIndexFetchError("No branches specified for _load_bblayers!")
+            raise LayerIndexFetchError("No branches specified for _load_bblayers!")
 
         index = layerindexlib.LayerIndexObj()
 
@@ -173,7 +172,7 @@ class CookerPlugin(layerindexlib.plugin.IndexPlugin):
         else:
             branches = ['HEAD']
 
-        logger.debug("Loading cooker data branches %s" % branches)
+        logger.debug(1, "Loading cooker data branches %s" % branches)
 
         index = self._load_bblayers(branches=branches)
 
@@ -203,7 +202,7 @@ class CookerPlugin(layerindexlib.plugin.IndexPlugin):
                     try:
                         depDict = bb.utils.explode_dep_versions2(deps)
                     except bb.utils.VersionStringException as vse:
-                        bb.fatal('Error parsing LAYERDEPENDS_%s: %s' % (collection, str(vse)))
+                        bb.fatal('Error parsing LAYERDEPENDS_%s: %s' % (c, str(vse)))
 
                     for dep, oplist in list(depDict.items()):
                         # We need to search ourselves, so use the _ version...
@@ -220,7 +219,7 @@ class CookerPlugin(layerindexlib.plugin.IndexPlugin):
                                         required=required, layerbranch=layerBranchId,
                                         dependency=depLayerBranch.layer_id)
 
-                        logger.debug('%s requires %s' % (layerDependency.layer.name, layerDependency.dependency.name))
+                        logger.debug(1, '%s requires %s' % (layerDependency.layer.name, layerDependency.dependency.name))
                         index.add_element("layerDependencies", [layerDependency])
 
                     return layerDependencyId
@@ -269,7 +268,7 @@ class CookerPlugin(layerindexlib.plugin.IndexPlugin):
 
                     layer = bb.utils.get_file_layer(realfn[0], self.config_data)
 
-                    depBranchId = collection[layer]
+                    depBranchId = collection_layerbranch[layer]
 
                     recipeId += 1
                     recipe = layerindexlib.Recipe(index, None)

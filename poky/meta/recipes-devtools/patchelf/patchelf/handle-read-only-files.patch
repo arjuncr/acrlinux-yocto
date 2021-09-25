@@ -14,32 +14,30 @@ Signed-off-by: Fabio Berton <fabio.berton@ossystems.com.br>
  src/patchelf.cc | 16 +++++++++++++++-
  1 file changed, 15 insertions(+), 1 deletion(-)
 
-Index: git/src/patchelf.cc
-===================================================================
---- git.orig/src/patchelf.cc
-+++ git/src/patchelf.cc
-@@ -499,9 +499,19 @@ void ElfFile<ElfFileParamNames>::sortShd
+diff --git a/src/patchelf.cc b/src/patchelf.cc
+index 0b4965adff83..b5db2aef0e8a 100644
+--- a/src/patchelf.cc
++++ b/src/patchelf.cc
+@@ -497,7 +497,17 @@ void ElfFile<ElfFileParamNames>::sortShdrs()
  
  static void writeFile(std::string fileName, FileContents contents)
  {
+-    int fd = open(fileName.c_str(), O_TRUNC | O_WRONLY);
 +    struct stat st;
 +    int fd;
 +
-     debug("writing %s\n", fileName.c_str());
- 
--    int fd = open(fileName.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0777);
 +    if (stat(fileName.c_str(), &st) != 0)
 +        error("stat");
 +
 +    if (chmod(fileName.c_str(), 0600) != 0)
 +        error("chmod");
 +
-+    fd = open(fileName.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0777);
++    fd = open(fileName.c_str(), O_TRUNC | O_WRONLY);
 +
      if (fd == -1)
          error("open");
  
-@@ -515,6 +525,10 @@ static void writeFile(std::string fileNa
+@@ -511,6 +521,10 @@ static void writeFile(std::string fileName, FileContents contents)
  
      if (close(fd) != 0)
          error("close");

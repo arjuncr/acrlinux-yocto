@@ -10,7 +10,14 @@ from fnmatch import fnmatchcase as fnmatch
 def license_ok(license, dont_want_licenses):
     """ Return False if License exist in dont_want_licenses else True """
     for dwl in dont_want_licenses:
-        if fnmatch(license, dwl):
+        # If you want to exclude license named generically 'X', we
+        # surely want to exclude 'X+' as well.  In consequence, we
+        # will exclude a trailing '+' character from LICENSE in
+        # case INCOMPATIBLE_LICENSE is not a 'X+' license.
+        lic = license
+        if not re.search(r'\+$', dwl):
+            lic = re.sub(r'\+', '', license)
+        if fnmatch(lic, dwl):
             return False
     return True
 

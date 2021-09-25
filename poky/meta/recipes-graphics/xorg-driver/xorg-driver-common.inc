@@ -5,6 +5,7 @@ SECTION = "x11/drivers"
 LICENSE = "MIT-X"
 
 PE = "2"
+INC_PR = "r21"
 
 DEPENDS = "virtual/xserver xorgproto util-macros"
 

@@ -73,9 +73,7 @@ class SkippedPackage:
             self.pn = info.pn
             self.skipreason = info.skipreason
             self.provides = info.provides
-            self.rprovides = info.packages + info.rprovides
-            for package in info.packages:
-                self.rprovides += info.rprovides_pkg[package]
+            self.rprovides = info.rprovides
         elif reason:
             self.skipreason = reason
 
@@ -150,18 +148,15 @@ class BBCooker:
     Manages one bitbake build run
     """
 
-    def __init__(self, featureSet=None, idleCallBackRegister=None):
+    def __init__(self, configuration, featureSet=None):
         self.recipecaches = None
-        self.eventlog = None
         self.skiplist = {}
         self.featureset = CookerFeatures()
         if featureSet:
             for f in featureSet:
                 self.featureset.setFeature(f)
 
-        self.configuration = bb.cookerdata.CookerConfiguration()
-
-        self.idleCallBackRegister = idleCallBackRegister
+        self.configuration = configuration
 
         bb.debug(1, "BBCooker starting %s" % time.time())
         sys.stdout.flush()
@@ -197,13 +192,25 @@ class BBCooker:
         self.hashserv = None
         self.hashservaddr = None
 
+        self.initConfigurationData()
+
+        bb.debug(1, "BBCooker parsed base configuration %s" % time.time())
+        sys.stdout.flush()
+
+        # we log all events to a file if so directed
+        if self.configuration.writeeventlog:
+            # register the log file writer as UI Handler
+            writer = EventWriter(self, self.configuration.writeeventlog)
+            EventLogWriteHandler = namedtuple('EventLogWriteHandler', ['event'])
+            bb.event.register_UIHhandler(EventLogWriteHandler(writer))
+
         self.inotify_modified_files = []
 
         def _process_inotify_updates(server, cooker, abort):
             cooker.process_inotify_updates()
             return 1.0
 
-        self.idleCallBackRegister(_process_inotify_updates, self)
+        self.configuration.server_register_idlecallback(_process_inotify_updates, self)
 
         # TOSTOP must not be set or our children will hang when they output
         try:
@@ -229,13 +236,6 @@ class BBCooker:
 
         bb.debug(1, "BBCooker startup complete %s" % time.time())
         sys.stdout.flush()
-
-    def init_configdata(self):
-        if not hasattr(self, "data"):
-            self.initConfigurationData()
-            bb.debug(1, "BBCooker parsed base configuration %s" % time.time())
-            sys.stdout.flush()
-            self.handlePRServ()
 
     def process_inotify_updates(self):
         for n in [self.confignotifier, self.notifier]:
@@ -322,7 +322,7 @@ class BBCooker:
         for feature in features:
             self.featureset.setFeature(feature)
         bb.debug(1, "Features set %s (was %s)" % (original_featureset, list(self.featureset)))
-        if (original_featureset != list(self.featureset)) and self.state != state.error and hasattr(self, "data"):
+        if (original_featureset != list(self.featureset)) and self.state != state.error:
             self.reset()
 
     def initConfigurationData(self):
@@ -354,7 +354,7 @@ class BBCooker:
                 self.caches_array.append(getattr(module, cache_name))
             except ImportError as exc:
                 logger.critical("Unable to import extra RecipeInfo '%s' from '%s': %s" % (cache_name, module_name, exc))
-                raise bb.BBHandledException()
+                sys.exit("FATAL: Failed to import extra cache class '%s'." % cache_name)
 
         self.databuilder = bb.cookerdata.CookerDataBuilder(self.configuration, False)
         self.databuilder.parseBaseConfiguration()
@@ -411,7 +411,10 @@ class BBCooker:
             self.data.disableTracking()
 
     def parseConfiguration(self):
-        self.updateCacheSync()
+        # Set log file verbosity
+        verboselogs = bb.utils.to_boolean(self.data.getVar("BB_VERBOSE_LOGS", False))
+        if verboselogs:
+            bb.msg.loggerVerboseLogs = True
 
         # Change nice level if we're asked to
         nice = self.data.getVar("BB_NICE_LEVEL")
@@ -443,52 +446,27 @@ class BBCooker:
                         continue
                 except AttributeError:
                     pass
-                logger.debug("Marking as dirty due to '%s' option change to '%s'" % (o, options[o]))
+                logger.debug(1, "Marking as dirty due to '%s' option change to '%s'" % (o, options[o]))
                 print("Marking as dirty due to '%s' option change to '%s'" % (o, options[o]))
                 clean = False
-            if hasattr(self.configuration, o):
-                setattr(self.configuration, o, options[o])
-
-        if self.configuration.writeeventlog:
-            if self.eventlog and self.eventlog[0] != self.configuration.writeeventlog:
-                bb.event.unregister_UIHhandler(self.eventlog[1])
-            if not self.eventlog or self.eventlog[0] != self.configuration.writeeventlog:
-                # we log all events to a file if so directed
-                # register the log file writer as UI Handler
-                writer = EventWriter(self, self.configuration.writeeventlog)
-                EventLogWriteHandler = namedtuple('EventLogWriteHandler', ['event'])
-                self.eventlog = (self.configuration.writeeventlog, bb.event.register_UIHhandler(EventLogWriteHandler(writer)))
-
-        bb.msg.loggerDefaultLogLevel = self.configuration.default_loglevel
-        bb.msg.loggerDefaultDomains = self.configuration.debug_domains
-
-        if hasattr(self, "data"):
-            origenv = bb.data.init()
-            for k in environment:
-                origenv.setVar(k, environment[k])
-            self.data.setVar("BB_ORIGENV", origenv)
-
+            setattr(self.configuration, o, options[o])
         for k in bb.utils.approved_variables():
             if k in environment and k not in self.configuration.env:
-                logger.debug("Updating new environment variable %s to %s" % (k, environment[k]))
+                logger.debug(1, "Updating new environment variable %s to %s" % (k, environment[k]))
                 self.configuration.env[k] = environment[k]
                 clean = False
             if k in self.configuration.env and k not in environment:
-                logger.debug("Updating environment variable %s (deleted)" % (k))
+                logger.debug(1, "Updating environment variable %s (deleted)" % (k))
                 del self.configuration.env[k]
                 clean = False
             if k not in self.configuration.env and k not in environment:
                 continue
             if environment[k] != self.configuration.env[k]:
-                logger.debug("Updating environment variable %s from %s to %s" % (k, self.configuration.env[k], environment[k]))
+                logger.debug(1, "Updating environment variable %s from %s to %s" % (k, self.configuration.env[k], environment[k]))
                 self.configuration.env[k] = environment[k]
                 clean = False
-
-        # Now update all the variables not in the datastore to match
-        self.configuration.env = environment
-
         if not clean:
-            logger.debug("Base environment change, triggering reparse")
+            logger.debug(1, "Base environment change, triggering reparse")
             self.reset()
 
     def runCommands(self, server, data, abort):
@@ -502,30 +480,22 @@ class BBCooker:
 
     def showVersions(self):
 
-        (latest_versions, preferred_versions, required) = self.findProviders()
+        (latest_versions, preferred_versions) = self.findProviders()
 
-        logger.plain("%-35s %25s %25s %25s", "Recipe Name", "Latest Version", "Preferred Version", "Required Version")
-        logger.plain("%-35s %25s %25s %25s\n", "===========", "==============", "=================", "================")
+        logger.plain("%-35s %25s %25s", "Recipe Name", "Latest Version", "Preferred Version")
+        logger.plain("%-35s %25s %25s\n", "===========", "==============", "=================")
 
         for p in sorted(self.recipecaches[''].pkg_pn):
-            preferred = preferred_versions[p]
+            pref = preferred_versions[p]
             latest = latest_versions[p]
-            requiredstr = ""
-            preferredstr = ""
-            if required[p]:
-                if preferred[0] is not None:
-                    requiredstr = preferred[0][0] + ":" + preferred[0][1] + '-' + preferred[0][2]
-                else:
-                    bb.fatal("REQUIRED_VERSION of package %s not available" % p)
-            else:
-                preferredstr = preferred[0][0] + ":" + preferred[0][1] + '-' + preferred[0][2]
 
+            prefstr = pref[0][0] + ":" + pref[0][1] + '-' + pref[0][2]
             lateststr = latest[0][0] + ":" + latest[0][1] + "-" + latest[0][2]
 
-            if preferred == latest:
-                preferredstr = ""
+            if pref == latest:
+                prefstr = ""
 
-            logger.plain("%-35s %25s %25s %25s", p, lateststr, preferredstr, requiredstr)
+            logger.plain("%-35s %25s %25s", p, lateststr, prefstr)
 
     def showEnvironment(self, buildfile=None, pkgs_to_build=None):
         """
@@ -555,7 +525,7 @@ class BBCooker:
             self.parseConfiguration()
 
             fn, cls, mc = bb.cache.virtualfn2realfn(buildfile)
-            fn = self.matchFile(fn, mc)
+            fn = self.matchFile(fn)
             fn = bb.cache.realfn2virtual(fn, cls, mc)
         elif len(pkgs_to_build) == 1:
             mc = mc_base(pkgs_to_build[0])
@@ -571,8 +541,8 @@ class BBCooker:
 
         if fn:
             try:
-                bb_caches = bb.cache.MulticonfigCache(self.databuilder, self.data_hash, self.caches_array)
-                envdata = bb_caches[mc].loadDataFull(fn, self.collections[mc].get_file_appends(fn))
+                bb_cache = bb.cache.Cache(self.databuilder, self.data_hash, self.caches_array)
+                envdata = bb_cache.loadDataFull(fn, self.collection.get_file_appends(fn))
             except Exception as e:
                 parselog.exception("Unable to read %s", fn)
                 raise
@@ -624,7 +594,7 @@ class BBCooker:
         # Replace string such as "mc:*:bash"
         # into "mc:A:bash mc:B:bash bash"
         for k in targetlist:
-            if k.startswith("mc:") and k.count(':') >= 2:
+            if k.startswith("mc:"):
                 if wildcard:
                     bb.fatal('multiconfig conflict')
                 if k.split(":")[1] == "*":
@@ -656,9 +626,8 @@ class BBCooker:
         current = 0
         runlist = []
         for k in fulltargetlist:
-            origk = k
             mc = ""
-            if k.startswith("mc:") and k.count(':') >= 2:
+            if k.startswith("mc:"):
                 mc = k.split(":")[1]
                 k = ":".join(k.split(":")[2:])
             ktask = task
@@ -666,10 +635,6 @@ class BBCooker:
                 k2 = k.split(":do_")
                 k = k2[0]
                 ktask = k2[1]
-
-            if mc not in self.multiconfigs:
-                 bb.fatal("Multiconfig dependency %s depends on nonexistent multiconfig configuration named %s" % (origk, mc))
-
             taskdata[mc].add_provider(localdata[mc], self.recipecaches[mc], k)
             current += 1
             if not ktask.startswith("do_"):
@@ -705,9 +670,9 @@ class BBCooker:
                         l = k.split(':')
                         depmc = l[2]
                         if depmc not in self.multiconfigs:
-                            bb.fatal("Multiconfig dependency %s depends on nonexistent multiconfig configuration named configuration %s" % (k,depmc))
+                            bb.fatal("Multiconfig dependency %s depends on nonexistent mc configuration %s" % (k,depmc))
                         else:
-                            logger.debug("Adding providers for multiconfig dependency %s" % l[3])
+                            logger.debug(1, "Adding providers for multiconfig dependency %s" % l[3])
                             taskdata[depmc].add_provider(localdata[depmc], self.recipecaches[depmc], l[3])
                             seen.add(k)
                             new = True
@@ -964,33 +929,26 @@ class BBCooker:
         logger.info("Task dependencies saved to 'task-depends.dot'")
 
     def show_appends_with_no_recipes(self):
-        appends_without_recipes = {}
         # Determine which bbappends haven't been applied
-        for mc in self.multiconfigs:
-            # First get list of recipes, including skipped
-            recipefns = list(self.recipecaches[mc].pkg_fn.keys())
-            recipefns.extend(self.skiplist.keys())
 
-            # Work out list of bbappends that have been applied
-            applied_appends = []
-            for fn in recipefns:
-                applied_appends.extend(self.collections[mc].get_file_appends(fn))
+        # First get list of recipes, including skipped
+        recipefns = list(self.recipecaches[''].pkg_fn.keys())
+        recipefns.extend(self.skiplist.keys())
 
-            appends_without_recipes[mc] = []
-            for _, appendfn in self.collections[mc].bbappends:
-                if not appendfn in applied_appends:
-                    appends_without_recipes[mc].append(appendfn)
+        # Work out list of bbappends that have been applied
+        applied_appends = []
+        for fn in recipefns:
+            applied_appends.extend(self.collection.get_file_appends(fn))
 
-        msgs = []
-        for mc in sorted(appends_without_recipes.keys()):
-            if appends_without_recipes[mc]:
-                msgs.append('No recipes in %s available for:\n  %s' % (mc if mc else 'default',
-                                                                        '\n  '.join(appends_without_recipes[mc])))
+        appends_without_recipes = []
+        for _, appendfn in self.collection.bbappends:
+            if not appendfn in applied_appends:
+                appends_without_recipes.append(appendfn)
 
-        if msgs:
-            msg = "\n".join(msgs)
-            warn_only = self.databuilder.mcdata[mc].getVar("BB_DANGLINGAPPENDS_WARNONLY", \
-                False) or "no"
+        if appends_without_recipes:
+            msg = 'No recipes available for:\n  %s' % '\n  '.join(appends_without_recipes)
+            warn_only = self.data.getVar("BB_DANGLINGAPPENDS_WARNONLY", \
+                 False) or "no"
             if warn_only.lower() in ("1", "yes", "true"):
                 bb.warn(msg)
             else:
@@ -1071,16 +1029,10 @@ class BBCooker:
         if pn in self.recipecaches[mc].providers:
             filenames = self.recipecaches[mc].providers[pn]
             eligible, foundUnique = bb.providers.filterProviders(filenames, pn, self.databuilder.mcdata[mc], self.recipecaches[mc])
-            if eligible is not None:
-                filename = eligible[0]
-            else:
-                filename = None
+            filename = eligible[0]
             return None, None, None, filename
         elif pn in self.recipecaches[mc].pkg_pn:
-            (latest, latest_f, preferred_ver, preferred_file, required) = bb.providers.findBestProvider(pn, self.databuilder.mcdata[mc], self.recipecaches[mc], self.recipecaches[mc].pkg_pn)
-            if required and preferred_file is None:
-                return None, None, None, None
-            return (latest, latest_f, preferred_ver, preferred_file)
+            return bb.providers.findBestProvider(pn, self.databuilder.mcdata[mc], self.recipecaches[mc], self.recipecaches[mc].pkg_pn)
         else:
             return None, None, None, None
 
@@ -1145,7 +1097,7 @@ class BBCooker:
             from bb import shell
         except ImportError:
             parselog.exception("Interactive mode not available")
-            raise bb.BBHandledException()
+            sys.exit(1)
         else:
             shell.start( self )
 
@@ -1297,15 +1249,15 @@ class BBCooker:
         if siggen_cache:
             bb.parse.siggen.checksum_cache.mtime_cache.clear()
 
-    def matchFiles(self, bf, mc=''):
+    def matchFiles(self, bf):
         """
         Find the .bb files which match the expression in 'buildfile'.
         """
         if bf.startswith("/") or bf.startswith("../"):
             bf = os.path.abspath(bf)
 
-        self.collections = {mc: CookerCollectFiles(self.bbfile_config_priorities, mc)}
-        filelist, masked, searchdirs = self.collections[mc].collect_bbfiles(self.databuilder.mcdata[mc], self.databuilder.mcdata[mc])
+        self.collection = CookerCollectFiles(self.bbfile_config_priorities)
+        filelist, masked, searchdirs = self.collection.collect_bbfiles(self.data, self.data)
         try:
             os.stat(bf)
             bf = os.path.abspath(bf)
@@ -1318,12 +1270,12 @@ class BBCooker:
                     matches.append(f)
             return matches
 
-    def matchFile(self, buildfile, mc=''):
+    def matchFile(self, buildfile):
         """
         Find the .bb file which matches the expression in 'buildfile'.
         Raise an error if multiple files
         """
-        matches = self.matchFiles(buildfile, mc)
+        matches = self.matchFiles(buildfile)
         if len(matches) != 1:
             if matches:
                 msg = "Unable to match '%s' to a specific recipe file - %s matches found:" % (buildfile, len(matches))
@@ -1364,14 +1316,14 @@ class BBCooker:
             task = "do_%s" % task
 
         fn, cls, mc = bb.cache.virtualfn2realfn(buildfile)
-        fn = self.matchFile(fn, mc)
+        fn = self.matchFile(fn)
 
         self.buildSetVars()
         self.reset_mtime_caches()
 
-        bb_caches = bb.cache.MulticonfigCache(self.databuilder, self.data_hash, self.caches_array)
+        bb_cache = bb.cache.Cache(self.databuilder, self.data_hash, self.caches_array)
 
-        infos = bb_caches[mc].parse(fn, self.collections[mc].get_file_appends(fn))
+        infos = bb_cache.parse(fn, self.collection.get_file_appends(fn))
         infos = dict(infos)
 
         fn = bb.cache.realfn2virtual(fn, cls, mc)
@@ -1459,7 +1411,7 @@ class BBCooker:
                 return True
             return retval
 
-        self.idleCallBackRegister(buildFileIdle, rq)
+        self.configuration.server_register_idlecallback(buildFileIdle, rq)
 
     def buildTargets(self, targets, task):
         """
@@ -1530,7 +1482,7 @@ class BBCooker:
         if 'universe' in targets:
             rq.rqdata.warn_multi_bb = True
 
-        self.idleCallBackRegister(buildTargetsIdle, rq)
+        self.configuration.server_register_idlecallback(buildTargetsIdle, rq)
 
 
     def getAllKeysWithFlags(self, flaglist):
@@ -1569,7 +1521,7 @@ class BBCooker:
         self.inotify_modified_files = []
 
         if not self.baseconfig_valid:
-            logger.debug("Reloading base configuration data")
+            logger.debug(1, "Reloading base configuration data")
             self.initConfigurationData()
             self.handlePRServ()
 
@@ -1581,7 +1533,6 @@ class BBCooker:
         if self.state in (state.shutdown, state.forceshutdown, state.error):
             if hasattr(self.parser, 'shutdown'):
                 self.parser.shutdown(clean=False, force = True)
-                self.parser.final_cleanup()
             raise bb.BBHandledException()
 
         if self.state != state.parsing:
@@ -1601,24 +1552,14 @@ class BBCooker:
                 for dep in self.configuration.extra_assume_provided:
                     self.recipecaches[mc].ignored_dependencies.add(dep)
 
-            self.collections = {}
-
-            mcfilelist = {}
-            total_masked = 0
-            searchdirs = set()
-            for mc in self.multiconfigs:
-                self.collections[mc] = CookerCollectFiles(self.bbfile_config_priorities, mc)
-                (filelist, masked, search) = self.collections[mc].collect_bbfiles(self.databuilder.mcdata[mc], self.databuilder.mcdata[mc])
-
-                mcfilelist[mc] = filelist
-                total_masked += masked
-                searchdirs |= set(search)
+            self.collection = CookerCollectFiles(self.bbfile_config_priorities)
+            (filelist, masked, searchdirs) = self.collection.collect_bbfiles(self.data, self.data)
 
             # Add inotify watches for directories searched for bb/bbappend files
             for dirent in searchdirs:
                 self.add_filewatch([[dirent]], dirs=True)
 
-            self.parser = CookerParser(self, mcfilelist, total_masked)
+            self.parser = CookerParser(self, filelist, masked)
             self.parsecache_valid = True
 
         self.state = state.parsing
@@ -1630,7 +1571,7 @@ class BBCooker:
             self.show_appends_with_no_recipes()
             self.handlePrefProviders()
             for mc in self.multiconfigs:
-                self.recipecaches[mc].bbfile_priority = self.collections[mc].collection_priorities(self.recipecaches[mc].pkg_fn, self.parser.mcfilelist[mc], self.data)
+                self.recipecaches[mc].bbfile_priority = self.collection.collection_priorities(self.recipecaches[mc].pkg_fn, self.data)
             self.state = state.running
 
             # Send an event listing all stamps reachable after parsing
@@ -1689,6 +1630,9 @@ class BBCooker:
         return pkgs_to_build
 
     def pre_serve(self):
+        # We now are in our own process so we can call this here.
+        # PRServ exits if its parent process exits
+        self.handlePRServ()
         return
 
     def post_serve(self):
@@ -1697,8 +1641,7 @@ class BBCooker:
         if self.hashserv:
             self.hashserv.process.terminate()
             self.hashserv.process.join()
-        if hasattr(self, "data"):
-            bb.event.fire(CookerExit(), self.data)
+        bb.event.fire(CookerExit(), self.data)
 
     def shutdown(self, force = False):
         if force:
@@ -1722,9 +1665,8 @@ class BBCooker:
         self.finishcommand()
         self.extraconfigdata = {}
         self.command.reset()
-        if hasattr(self, "data"):
-           self.databuilder.reset()
-           self.data = self.databuilder.data
+        self.databuilder.reset()
+        self.data = self.databuilder.data
         self.parsecache_valid = False
         self.baseconfig_valid = False
 
@@ -1739,19 +1681,21 @@ class CookerExit(bb.event.Event):
 
 
 class CookerCollectFiles(object):
-    def __init__(self, priorities, mc=''):
-        self.mc = mc
+    def __init__(self, priorities):
         self.bbappends = []
         # Priorities is a list of tupples, with the second element as the pattern.
         # We need to sort the list with the longest pattern first, and so on to
         # the shortest.  This allows nested layers to be properly evaluated.
         self.bbfile_config_priorities = sorted(priorities, key=lambda tup: tup[1], reverse=True)
 
-    def calc_bbfile_priority(self, filename):
+    def calc_bbfile_priority( self, filename, matched = None ):
         for _, _, regex, pri in self.bbfile_config_priorities:
             if regex.match(filename):
-                return pri, regex
-        return 0, None
+                if matched is not None:
+                    if not regex in matched:
+                        matched.add(regex)
+                return pri
+        return 0
 
     def get_bbfiles(self):
         """Get list of default .bb files by reading out the current directory"""
@@ -1781,10 +1725,10 @@ class CookerCollectFiles(object):
         collectlog.debug(1, "collecting .bb files")
 
         files = (config.getVar( "BBFILES") or "").split()
+        config.setVar("BBFILES", " ".join(files))
 
         # Sort files by priority
-        files.sort( key=lambda fileitem: self.calc_bbfile_priority(fileitem)[0] )
-        config.setVar("BBFILES_PRIORITIZED", " ".join(files))
+        files.sort( key=lambda fileitem: self.calc_bbfile_priority(fileitem) )
 
         if not len(files):
             files = self.get_bbfiles()
@@ -1904,67 +1848,43 @@ class CookerCollectFiles(object):
             (bbappend, filename) = b
             if (bbappend == f) or ('%' in bbappend and bbappend.startswith(f[:bbappend.index('%')])):
                 filelist.append(filename)
-        return tuple(filelist)
+        return filelist
 
-    def collection_priorities(self, pkgfns, fns, d):
-        # Return the priorities of the entries in pkgfns
-        # Also check that all the regexes in self.bbfile_config_priorities are used
-        # (but to do that we need to ensure skipped recipes aren't counted, nor
-        # collections in BBFILE_PATTERN_IGNORE_EMPTY)
+    def collection_priorities(self, pkgfns, d):
 
         priorities = {}
-        seen = set()
-        matched = set()
-
-        matched_regex = set()
-        unmatched_regex = set()
-        for _, _, regex, _ in self.bbfile_config_priorities:
-            unmatched_regex.add(regex)
 
         # Calculate priorities for each file
+        matched = set()
         for p in pkgfns:
             realfn, cls, mc = bb.cache.virtualfn2realfn(p)
-            priorities[p], regex = self.calc_bbfile_priority(realfn)
-            if regex in unmatched_regex:
-                matched_regex.add(regex)
-                unmatched_regex.remove(regex)
-            seen.add(realfn)
-            if regex:
-                matched.add(realfn)
+            priorities[p] = self.calc_bbfile_priority(realfn, matched)
 
-        if unmatched_regex:
-            # Account for bbappend files
+        unmatched = set()
+        for _, _, regex, pri in self.bbfile_config_priorities:
+            if not regex in matched:
+                unmatched.add(regex)
+
+        # Don't show the warning if the BBFILE_PATTERN did match .bbappend files
+        def find_bbappend_match(regex):
             for b in self.bbappends:
                 (bbfile, append) = b
-                seen.add(append)
+                if regex.match(append):
+                    # If the bbappend is matched by already "matched set", return False
+                    for matched_regex in matched:
+                        if matched_regex.match(append):
+                            return False
+                    return True
+            return False
 
-            # Account for skipped recipes
-            seen.update(fns)
-
-            seen.difference_update(matched)
-
-            def already_matched(fn):
-                for regex in matched_regex:
-                    if regex.match(fn):
-                        return True
-                return False
-
-            for unmatch in unmatched_regex.copy():
-                for fn in seen:
-                    if unmatch.match(fn):
-                        # If the bbappend or file was already matched by another regex, skip it
-                        # e.g. for a layer within a layer, the outer regex could match, the inner
-                        # regex may match nothing and we should warn about that
-                        if already_matched(fn):
-                            continue
-                        unmatched_regex.remove(unmatch)
-                        break
+        for unmatch in unmatched.copy():
+            if find_bbappend_match(unmatch):
+                unmatched.remove(unmatch)
 
         for collection, pattern, regex, _ in self.bbfile_config_priorities:
-            if regex in unmatched_regex:
+            if regex in unmatched:
                 if d.getVar('BBFILE_PATTERN_IGNORE_EMPTY_%s' % collection) != '1':
-                    collectlog.warning("No bb files in %s matched BBFILE_PATTERN_%s '%s'" % (self.mc if self.mc else 'default',
-                                                                                             collection, pattern))
+                    collectlog.warning("No bb files matched BBFILE_PATTERN_%s '%s'" % (collection, pattern))
 
         return priorities
 
@@ -2034,7 +1954,7 @@ class Parser(multiprocessing.Process):
             except queue.Full:
                 pending.append(result)
 
-    def parse(self, mc, cache, filename, appends):
+    def parse(self, filename, appends):
         try:
             origfilter = bb.event.LogHandler.filter
             # Record the filename we're parsing into any events generated
@@ -2048,7 +1968,7 @@ class Parser(multiprocessing.Process):
             bb.event.set_class_handlers(self.handlers.copy())
             bb.event.LogHandler.filter = parse_filter
 
-            return True, mc, cache.parse(filename, appends)
+            return True, self.bb_cache.parse(filename, appends)
         except Exception as exc:
             tb = sys.exc_info()[2]
             exc.recipe = filename
@@ -2063,8 +1983,8 @@ class Parser(multiprocessing.Process):
             bb.event.LogHandler.filter = origfilter
 
 class CookerParser(object):
-    def __init__(self, cooker, mcfilelist, masked):
-        self.mcfilelist = mcfilelist
+    def __init__(self, cooker, filelist, masked):
+        self.filelist = filelist
         self.cooker = cooker
         self.cfgdata = cooker.data
         self.cfghash = cooker.data_hash
@@ -2078,27 +1998,25 @@ class CookerParser(object):
 
         self.skipped = 0
         self.virtuals = 0
+        self.total = len(filelist)
 
         self.current = 0
         self.process_names = []
 
-        self.bb_caches = bb.cache.MulticonfigCache(self.cfgbuilder, self.cfghash, cooker.caches_array)
-        self.fromcache = set()
-        self.willparse = set()
-        for mc in self.cooker.multiconfigs:
-            for filename in self.mcfilelist[mc]:
-                appends = self.cooker.collections[mc].get_file_appends(filename)
-                if not self.bb_caches[mc].cacheValid(filename, appends):
-                    self.willparse.add((mc, self.bb_caches[mc], filename, appends))
-                else:
-                    self.fromcache.add((mc, self.bb_caches[mc], filename, appends))
-
-        self.total = len(self.fromcache) + len(self.willparse)
-        self.toparse = len(self.willparse)
+        self.bb_cache = bb.cache.Cache(self.cfgbuilder, self.cfghash, cooker.caches_array)
+        self.fromcache = []
+        self.willparse = []
+        for filename in self.filelist:
+            appends = self.cooker.collection.get_file_appends(filename)
+            if not self.bb_cache.cacheValid(filename, appends):
+                self.willparse.append((filename, appends))
+            else:
+                self.fromcache.append((filename, appends))
+        self.toparse = self.total - len(self.fromcache)
         self.progress_chunk = int(max(self.toparse / 100, 1))
 
         self.num_processes = min(int(self.cfgdata.getVar("BB_NUMBER_PARSE_THREADS") or
-                                 multiprocessing.cpu_count()), self.toparse)
+                                 multiprocessing.cpu_count()), len(self.willparse))
 
         self.start()
         self.haveshutdown = False
@@ -2110,9 +2028,7 @@ class CookerParser(object):
         if self.toparse:
             bb.event.fire(bb.event.ParseStarted(self.toparse), self.cfgdata)
             def init():
-                signal.signal(signal.SIGTERM, signal.SIG_DFL)
-                signal.signal(signal.SIGHUP, signal.SIG_DFL)
-                signal.signal(signal.SIGINT, signal.SIG_IGN)
+                Parser.bb_cache = self.bb_cache
                 bb.utils.set_process_name(multiprocessing.current_process().name)
                 multiprocessing.util.Finalize(None, bb.codeparser.parser_cache_save, exitpriority=1)
                 multiprocessing.util.Finalize(None, bb.fetch.fetcher_parse_save, exitpriority=1)
@@ -2122,7 +2038,7 @@ class CookerParser(object):
 
             def chunkify(lst,n):
                 return [lst[i::n] for i in range(n)]
-            self.jobs = chunkify(list(self.willparse), self.num_processes)
+            self.jobs = chunkify(self.willparse, self.num_processes)
 
             for i in range(0, self.num_processes):
                 parser = Parser(self.jobs[i], self.result_queue, self.parser_quit, init, self.cooker.configuration.profile)
@@ -2169,11 +2085,7 @@ class CookerParser(object):
         # Allow data left in the cancel queue to be discarded
         self.parser_quit.cancel_join_thread()
 
-        def sync_caches():
-            for c in self.bb_caches.values():
-                c.sync()
-
-        sync = threading.Thread(target=sync_caches, name="SyncThread")
+        sync = threading.Thread(target=self.bb_cache.sync)
         self.syncthread = sync
         sync.start()
         bb.codeparser.parser_cache_savemerge()
@@ -2194,9 +2106,9 @@ class CookerParser(object):
             self.syncthread.join()
 
     def load_cached(self):
-        for mc, cache, filename, appends in self.fromcache:
-            cached, infos = cache.load(filename, appends)
-            yield not cached, mc, infos
+        for filename, appends in self.fromcache:
+            cached, infos = self.bb_cache.load(filename, appends)
+            yield not cached, infos
 
     def parse_generator(self):
         while True:
@@ -2218,7 +2130,7 @@ class CookerParser(object):
         result = []
         parsed = None
         try:
-            parsed, mc, result = next(self.results)
+            parsed, result = next(self.results)
         except StopIteration:
             self.shutdown()
             return False
@@ -2274,16 +2186,13 @@ class CookerParser(object):
             if info_array[0].skipped:
                 self.skipped += 1
                 self.cooker.skiplist[virtualfn] = SkippedPackage(info_array[0])
-            self.bb_caches[mc].add_info(virtualfn, info_array, self.cooker.recipecaches[mc],
+            (fn, cls, mc) = bb.cache.virtualfn2realfn(virtualfn)
+            self.bb_cache.add_info(virtualfn, info_array, self.cooker.recipecaches[mc],
                                         parsed=parsed, watcher = self.cooker.add_filewatch)
         return True
 
     def reparse(self, filename):
-        to_reparse = set()
-        for mc in self.cooker.multiconfigs:
-            to_reparse.add((mc, filename, self.cooker.collections[mc].get_file_appends(filename)))
-
-        for mc, filename, appends in to_reparse:
-            infos = self.bb_caches[mc].parse(filename, appends)
-            for vfn, info_array in infos:
-                self.cooker.recipecaches[mc].add_from_recipeinfo(vfn, info_array)
+        infos = self.bb_cache.parse(filename, self.cooker.collection.get_file_appends(filename))
+        for vfn, info_array in infos:
+            (fn, cls, mc) = bb.cache.virtualfn2realfn(vfn)
+            self.cooker.recipecaches[mc].add_from_recipeinfo(vfn, info_array)

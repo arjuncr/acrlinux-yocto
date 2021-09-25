@@ -21,13 +21,8 @@ def re_match_strings(target, strings):
     Whether or not the string 'target' matches
     any one string of the strings which can be regular expression string
     """
-    for name in strings:
-        if name.startswith("^") or name.endswith("$"):
-            if re.match(name, target):
-                return True
-        elif name == target:
-            return True
-    return False
+    return any(name == target or re.match(name, target)
+               for name in strings)
 
 class TaskEntry:
     def __init__(self):
@@ -131,7 +126,7 @@ class TaskData:
             for depend in dataCache.deps[fn]:
                 dependids.add(depend)
             self.depids[fn] = list(dependids)
-            logger.debug2("Added dependencies %s for %s", str(dataCache.deps[fn]), fn)
+            logger.debug(2, "Added dependencies %s for %s", str(dataCache.deps[fn]), fn)
 
         # Work out runtime dependencies
         if not fn in self.rdepids:
@@ -149,9 +144,9 @@ class TaskData:
                     rreclist.append(rdepend)
                     rdependids.add(rdepend)
             if rdependlist:
-                logger.debug2("Added runtime dependencies %s for %s", str(rdependlist), fn)
+                logger.debug(2, "Added runtime dependencies %s for %s", str(rdependlist), fn)
             if rreclist:
-                logger.debug2("Added runtime recommendations %s for %s", str(rreclist), fn)
+                logger.debug(2, "Added runtime recommendations %s for %s", str(rreclist), fn)
             self.rdepids[fn] = list(rdependids)
 
         for dep in self.depids[fn]:
@@ -378,7 +373,7 @@ class TaskData:
         for fn in eligible:
             if fn in self.failed_fns:
                 continue
-            logger.debug2("adding %s to satisfy %s", fn, item)
+            logger.debug(2, "adding %s to satisfy %s", fn, item)
             self.add_build_target(fn, item)
             self.add_tasks(fn, dataCache)
 
@@ -431,7 +426,7 @@ class TaskData:
         for fn in eligible:
             if fn in self.failed_fns:
                 continue
-            logger.debug2("adding '%s' to satisfy runtime '%s'", fn, item)
+            logger.debug(2, "adding '%s' to satisfy runtime '%s'", fn, item)
             self.add_runtime_target(fn, item)
             self.add_tasks(fn, dataCache)
 
@@ -446,7 +441,7 @@ class TaskData:
             return
         if not missing_list:
             missing_list = []
-        logger.debug("File '%s' is unbuildable, removing...", fn)
+        logger.debug(1, "File '%s' is unbuildable, removing...", fn)
         self.failed_fns.append(fn)
         for target in self.build_targets:
             if fn in self.build_targets[target]:
@@ -526,7 +521,7 @@ class TaskData:
                     added = added + 1
                 except (bb.providers.NoRProvider, bb.providers.MultipleRProvider):
                     self.remove_runtarget(target)
-            logger.debug("Resolved " + str(added) + " extra dependencies")
+            logger.debug(1, "Resolved " + str(added) + " extra dependencies")
             if added == 0:
                 break
         # self.dump_data()
@@ -549,38 +544,38 @@ class TaskData:
         """
         Dump some debug information on the internal data structures
         """
-        logger.debug3("build_names:")
-        logger.debug3(", ".join(self.build_targets))
+        logger.debug(3, "build_names:")
+        logger.debug(3, ", ".join(self.build_targets))
 
-        logger.debug3("run_names:")
-        logger.debug3(", ".join(self.run_targets))
+        logger.debug(3, "run_names:")
+        logger.debug(3, ", ".join(self.run_targets))
 
-        logger.debug3("build_targets:")
+        logger.debug(3, "build_targets:")
         for target in self.build_targets:
             targets = "None"
             if target in self.build_targets:
                 targets = self.build_targets[target]
-            logger.debug3(" %s: %s", target, targets)
+            logger.debug(3, " %s: %s", target, targets)
 
-        logger.debug3("run_targets:")
+        logger.debug(3, "run_targets:")
         for target in self.run_targets:
             targets = "None"
             if target in self.run_targets:
                 targets = self.run_targets[target]
-            logger.debug3(" %s: %s", target, targets)
+            logger.debug(3, " %s: %s", target, targets)
 
-        logger.debug3("tasks:")
+        logger.debug(3, "tasks:")
         for tid in self.taskentries:
-            logger.debug3(" %s: %s %s %s",
+            logger.debug(3, " %s: %s %s %s",
                        tid,
                        self.taskentries[tid].idepends,
                        self.taskentries[tid].irdepends,
                        self.taskentries[tid].tdepends)
 
-        logger.debug3("dependency ids (per fn):")
+        logger.debug(3, "dependency ids (per fn):")
         for fn in self.depids:
-            logger.debug3(" %s: %s", fn, self.depids[fn])
+            logger.debug(3, " %s: %s", fn, self.depids[fn])
 
-        logger.debug3("runtime dependency ids (per fn):")
+        logger.debug(3, "runtime dependency ids (per fn):")
         for fn in self.rdepids:
-            logger.debug3(" %s: %s", fn, self.rdepids[fn])
+            logger.debug(3, " %s: %s", fn, self.rdepids[fn])

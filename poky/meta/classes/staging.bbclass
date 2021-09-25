@@ -5,7 +5,6 @@ SYSROOT_DIRS = " \
     ${base_libdir} \
     ${nonarch_base_libdir} \
     ${datadir} \
-    /sysroot-only \
 "
 
 # These directories are also staged in the sysroot when they contain files that
@@ -90,6 +89,7 @@ python sysroot_strip () {
 }
 
 do_populate_sysroot[dirs] = "${SYSROOT_DESTDIR}"
+do_populate_sysroot[umask] = "022"
 
 addtask populate_sysroot after do_install
 
@@ -97,7 +97,6 @@ SYSROOT_PREPROCESS_FUNCS ?= ""
 SYSROOT_DESTDIR = "${WORKDIR}/sysroot-destdir"
 
 python do_populate_sysroot () {
-    # SYSROOT 'version' 2
     bb.build.exec_func("sysroot_stage_all", d)
     bb.build.exec_func("sysroot_strip", d)
     for f in (d.getVar('SYSROOT_PREPROCESS_FUNCS') or '').split():
@@ -409,7 +408,7 @@ python extend_recipe_sysroot() {
         if os.path.islink(f) and not os.path.exists(f):
             bb.note("%s no longer exists, removing from sysroot" % f)
             lnk = os.readlink(f.replace(".complete", ""))
-            sstate_clean_manifest(depdir + "/" + lnk, d, workdir)
+            sstate_clean_manifest(depdir + "/" + lnk, d, canrace=True, prefix=workdir)
             os.unlink(f)
             os.unlink(f.replace(".complete", ""))
 
@@ -454,7 +453,7 @@ python extend_recipe_sysroot() {
             fl = depdir + "/" + l
             bb.note("Task %s no longer depends on %s, removing from sysroot" % (mytaskname, l))
             lnk = os.readlink(fl)
-            sstate_clean_manifest(depdir + "/" + lnk, d, workdir)
+            sstate_clean_manifest(depdir + "/" + lnk, d, canrace=True, prefix=workdir)
             os.unlink(fl)
             os.unlink(fl + ".complete")
 
@@ -475,7 +474,7 @@ python extend_recipe_sysroot() {
                 continue
             else:
                 bb.note("%s exists in sysroot, but is stale (%s vs. %s), removing." % (c, lnk, c + "." + taskhash))
-                sstate_clean_manifest(depdir + "/" + lnk, d, workdir)
+                sstate_clean_manifest(depdir + "/" + lnk, d, canrace=True, prefix=workdir)
                 os.unlink(depdir + "/" + c)
                 if os.path.lexists(depdir + "/" + c + ".complete"):
                     os.unlink(depdir + "/" + c + ".complete")
@@ -618,7 +617,7 @@ python staging_taskhandler() {
     bbtasks = e.tasklist
     for task in bbtasks:
         deps = d.getVarFlag(task, "depends")
-        if task == "do_configure" or (deps and "populate_sysroot" in deps):
+        if deps and "populate_sysroot" in deps:
             d.appendVarFlag(task, "prefuncs", " extend_recipe_sysroot")
 }
 staging_taskhandler[eventmask] = "bb.event.RecipeTaskPreProcess"

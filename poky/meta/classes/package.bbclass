@@ -245,8 +245,6 @@ python () {
         deps = ""
         for dep in (d.getVar('PACKAGE_DEPENDS') or "").split():
             deps += " %s:do_populate_sysroot" % dep
-        if d.getVar('PACKAGE_MINIDEBUGINFO') == '1':
-            deps += ' xz-native:do_populate_sysroot'
         d.appendVarFlag('do_package', 'depends', deps)
 
         # shlibs requires any DEPENDS to have already packaged for the *.list files
@@ -460,83 +458,6 @@ def splitstaticdebuginfo(file, dvar, debugstaticdir, debugstaticlibdir, debugsta
         os.chmod(file, origmode)
 
     return (file, sources)
-
-def inject_minidebuginfo(file, dvar, debugdir, debuglibdir, debugappend, debugsrcdir, d):
-    # Extract just the symbols from debuginfo into minidebuginfo,
-    # compress it with xz and inject it back into the binary in a .gnu_debugdata section.
-    # https://sourceware.org/gdb/onlinedocs/gdb/MiniDebugInfo.html
-
-    import subprocess
-
-    readelf = d.getVar('READELF')
-    nm = d.getVar('NM')
-    objcopy = d.getVar('OBJCOPY')
-
-    minidebuginfodir = d.expand('${WORKDIR}/minidebuginfo')
-
-    src = file[len(dvar):]
-    dest = debuglibdir + os.path.dirname(src) + debugdir + "/" + os.path.basename(src) + debugappend
-    debugfile = dvar + dest
-    minidebugfile = minidebuginfodir + src + '.minidebug'
-    bb.utils.mkdirhier(os.path.dirname(minidebugfile))
-
-    # If we didn't produce debuginfo for any reason, we can't produce minidebuginfo either
-    # so skip it.
-    if not os.path.exists(debugfile):
-        bb.debug(1, 'ELF file {} has no debuginfo, skipping minidebuginfo injection'.format(file))
-        return
-
-    # Find non-allocated PROGBITS, NOTE, and NOBITS sections in the debuginfo.
-    # We will exclude all of these from minidebuginfo to save space.
-    remove_section_names = []
-    for line in subprocess.check_output([readelf, '-W', '-S', debugfile], universal_newlines=True).splitlines():
-        fields = line.split()
-        if len(fields) < 8:
-            continue
-        name = fields[0]
-        type = fields[1]
-        flags = fields[7]
-        # .debug_ sections will be removed by objcopy -S so no need to explicitly remove them
-        if name.startswith('.debug_'):
-            continue
-        if 'A' not in flags and type in ['PROGBITS', 'NOTE', 'NOBITS']:
-            remove_section_names.append(name)
-
-    # List dynamic symbols in the binary. We can exclude these from minidebuginfo
-    # because they are always present in the binary.
-    dynsyms = set()
-    for line in subprocess.check_output([nm, '-D', file, '--format=posix', '--defined-only'], universal_newlines=True).splitlines():
-        dynsyms.add(line.split()[0])
-
-    # Find all function symbols from debuginfo which aren't in the dynamic symbols table.
-    # These are the ones we want to keep in minidebuginfo.
-    keep_symbols_file = minidebugfile + '.symlist'
-    found_any_symbols = False
-    with open(keep_symbols_file, 'w') as f:
-        for line in subprocess.check_output([nm, debugfile, '--format=sysv', '--defined-only'], universal_newlines=True).splitlines():
-            fields = line.split('|')
-            if len(fields) < 7:
-                continue
-            name = fields[0].strip()
-            type = fields[3].strip()
-            if type == 'FUNC' and name not in dynsyms:
-                f.write('{}\n'.format(name))
-                found_any_symbols = True
-
-    if not found_any_symbols:
-        bb.debug(1, 'ELF file {} contains no symbols, skipping minidebuginfo injection'.format(file))
-        return
-
-    bb.utils.remove(minidebugfile)
-    bb.utils.remove(minidebugfile + '.xz')
-
-    subprocess.check_call([objcopy, '-S'] +
-                          ['--remove-section={}'.format(s) for s in remove_section_names] +
-                          ['--keep-symbols={}'.format(keep_symbols_file), debugfile, minidebugfile])
-
-    subprocess.check_call(['xz', '--keep', minidebugfile])
-
-    subprocess.check_call([objcopy, '--add-section', '.gnu_debugdata={}.xz'.format(minidebugfile), file])
 
 def copydebugsources(debugsrcdir, sources, d):
     # The debug src information written out to sourcefile is further processed
@@ -807,15 +728,9 @@ python package_do_split_locales() {
 
 python perform_packagecopy () {
     import subprocess
-    import shutil
 
     dest = d.getVar('D')
     dvar = d.getVar('PKGD')
-
-    # Remove ${D}/sysroot-only if present
-    sysroot_only = os.path.join(dest, 'sysroot-only')
-    if cpath.exists(sysroot_only) and cpath.isdir(sysroot_only):
-        shutil.rmtree(sysroot_only)
 
     # Start by package population by taking a copy of the installed
     # files to operate on
@@ -1311,11 +1226,6 @@ python split_and_strip_files () {
 
         oe.utils.multiprocess_launch(oe.package.runstrip, sfiles, d)
 
-    # Build "minidebuginfo" and reinject it back into the stripped binaries
-    if d.getVar('PACKAGE_MINIDEBUGINFO') == '1':
-        oe.utils.multiprocess_launch(inject_minidebuginfo, list(elffiles), d,
-                                     extraargs=(dvar, debugdir, debuglibdir, debugappend, debugsrcdir, d))
-
     #
     # End of strip
     #
@@ -1545,7 +1455,7 @@ EXPORT_FUNCTIONS package_name_hook
 
 PKGDESTWORK = "${WORKDIR}/pkgdata"
 
-PKGDATA_VARS = "PN PE PV PR PKGE PKGV PKGR LICENSE DESCRIPTION SUMMARY RDEPENDS RPROVIDES RRECOMMENDS RSUGGESTS RREPLACES RCONFLICTS SECTION PKG ALLOW_EMPTY FILES CONFFILES FILES_INFO PACKAGE_ADD_METADATA pkg_postinst pkg_postrm pkg_preinst pkg_prerm"
+PKGDATA_VARS = "PN PE PV PR PKGE PKGV PKGR LICENSE DESCRIPTION SUMMARY RDEPENDS RPROVIDES RRECOMMENDS RSUGGESTS RREPLACES RCONFLICTS SECTION PKG ALLOW_EMPTY FILES CONFFILES FILES_INFO pkg_postinst pkg_postrm pkg_preinst pkg_prerm"
 
 python emit_pkgdata() {
     from glob import glob
@@ -2300,7 +2210,7 @@ python package_depchains() {
 
 # Since bitbake can't determine which variables are accessed during package
 # iteration, we need to list them here:
-PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm pkg_postinst_ontarget INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES SYSTEMD_SERVICE LICENSE SECTION pkg_preinst pkg_prerm RREPLACES GROUPMEMS_PARAM SYSTEMD_AUTO_ENABLE SKIP_FILEDEPS PRIVATE_LIBS PACKAGE_ADD_METADATA"
+PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm pkg_postinst_ontarget INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES SYSTEMD_SERVICE LICENSE SECTION pkg_preinst pkg_prerm RREPLACES GROUPMEMS_PARAM SYSTEMD_AUTO_ENABLE SKIP_FILEDEPS PRIVATE_LIBS"
 
 def gen_packagevar(d, pkgvars="PACKAGEVARS"):
     ret = []

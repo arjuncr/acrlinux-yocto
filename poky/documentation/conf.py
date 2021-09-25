@@ -16,7 +16,7 @@ import os
 import sys
 import datetime
 
-current_version = "dev"
+current_version = "3.1.11"
 
 # String used in sidebar
 version = 'Version: ' + current_version
@@ -32,9 +32,6 @@ copyright = '2010-%s, The Linux Foundation' % datetime.datetime.now().year
 author = 'The Linux Foundation'
 
 # -- General configuration ---------------------------------------------------
-
-# Prevent building with an outdated version of sphinx
-needs_sphinx = "3.1"
 
 # to load local extension from the folder 'sphinx'
 sys.path.insert(0, os.path.abspath('sphinx'))
@@ -71,25 +68,21 @@ rst_prolog = """
 
 # external links and substitutions
 extlinks = {
-    'yocto_home': ('https://www.yoctoproject.org%s', None),
-    'yocto_wiki': ('https://wiki.yoctoproject.org/wiki%s', None),
+    'yocto_home': ('https://yoctoproject.org%s', None),
+    'yocto_wiki': ('https://wiki.yoctoproject.org%s', None),
     'yocto_dl': ('https://downloads.yoctoproject.org%s', None),
     'yocto_lists': ('https://lists.yoctoproject.org%s', None),
     'yocto_bugs': ('https://bugzilla.yoctoproject.org%s', None),
     'yocto_ab': ('https://autobuilder.yoctoproject.org%s', None),
     'yocto_docs': ('https://docs.yoctoproject.org%s', None),
-    'yocto_git': ('https://git.yoctoproject.org/cgit/cgit.cgi%s', None),
+    'yocto_git': ('https://git.yoctoproject.org%s', None),
     'oe_home': ('https://www.openembedded.org%s', None),
     'oe_lists': ('https://lists.openembedded.org%s', None),
-    'oe_git': ('https://git.openembedded.org%s', None),
-    'oe_wiki': ('https://www.openembedded.org/wiki%s', None),
-    'oe_layerindex': ('https://layers.openembedded.org%s', None),
-    'oe_layer': ('https://layers.openembedded.org/layerindex/branch/master/layer%s', None),
 }
 
 # Intersphinx config to use cross reference with Bitbake user manual
 intersphinx_mapping = {
-    'bitbake': ('https://docs.yoctoproject.org/bitbake/', None)
+    'bitbake': ('https://docs.yoctoproject.org/bitbake/1.46', None)
 }
 
 # -- Options for HTML output -------------------------------------------------
