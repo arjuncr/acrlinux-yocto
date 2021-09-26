@@ -1,0 +1,33 @@
+From 732bcca9f5fbb6defca8c327744d015d6747864b Mon Sep 17 00:00:00 2001
+From: Xulin Sun <xulin.sun@windriver.com>
+Date: Tue, 12 Mar 2019 19:56:59 -0700
+Subject: [PATCH] libglusterfs: Don't link against libfl
+
+Remove reference to yywrap by adding "%option noyywrap" statements to
+the flex source file which doesn't override yywrap. After this, we no
+longer need to link against libfl and so no longer get errors about
+undefined references to yylex.
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: Xulin Sun <xulin.sun@windriver.com>
+Signed-off-by: Hongzhi.Song <hongzhi.song@windriver.com>
+---
+ libglusterfs/src/graph.l | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libglusterfs/src/graph.l b/libglusterfs/src/graph.l
+index 8af28a4..742d934 100644
+--- a/libglusterfs/src/graph.l
++++ b/libglusterfs/src/graph.l
+@@ -11,6 +11,7 @@
+ %x STRING
+ %option yylineno
+ %option noinput
++%option noyywrap
+ %{
+ 
+ #define YYSTYPE char *
+-- 
+2.17.1
+

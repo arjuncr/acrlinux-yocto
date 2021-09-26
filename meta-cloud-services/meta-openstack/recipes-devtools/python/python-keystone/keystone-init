@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Basic keystone setup as described on:
+# https://docs.openstack.org/mitaka/install-guide-ubuntu/keystone-install.html
+# https://docs.openstack.org/keystone/pike/install/keystone-install-ubuntu.html
+#
+# Prerequisites: /etc/postgresql/postgresql-init must be run first to create the DB
+#
+# After complete you should be able to query keystone with something like the 
+# following (https://docs.openstack.org/keystone/latest/api_curl_examples.html)
+#
+#curl -i \
+#  -H "Content-Type: application/json" \
+#  -d '
+#{ "auth": {
+#    "identity": {
+#      "methods": ["password"],
+#      "password": {
+#        "user": {
+#          "name": "%ADMIN_USER%",
+#          "domain": { "id": "default" },
+#          "password": "%ADMIN_PASSWORD%"
+#        }
+#      }
+#    }
+#  }
+#}' \
+#  "http://localhost:5000/v3/auth/tokens" ; echo
+
+
+# Substitutions setup at do_intall()
+DB_USER=%DB_USER%
+KEYSTONE_USER=%KEYSTONE_USER%
+KEYSTONE_GROUP=%KEYSTONE_GROUP%
+CONTROLLER_IP=%CONTROLLER_IP%
+ADMIN_USER=%ADMIN_USER%
+ADMIN_PASSWORD=%ADMIN_PASSWORD%
+ADMIN_ROLE=%ADMIN_ROLE%
+
+# Create the keystone DB and grant the necessary permissions
+sudo -u postgres psql -c "CREATE DATABASE keystone" 2> /dev/null
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE keystone TO ${DB_USER}" 2> /dev/null
+
+keystone-manage db_sync
+
+keystone-manage fernet_setup --keystone-user ${KEYSTONE_USER} --keystone-group ${KEYSTONE_GROUP}
+keystone-manage credential_setup --keystone-user ${KEYSTONE_USER} --keystone-group ${KEYSTONE_GROUP}
+
+keystone-manage bootstrap \
+  --bootstrap-password ${ADMIN_PASSWORD} \
+  --bootstrap-username ${ADMIN_USER} \
+  --bootstrap-project-name admin \
+  --bootstrap-role-name ${ADMIN_ROLE} \
+  --bootstrap-service-name keystone \
+  --bootstrap-region-id RegionOne \
+  --bootstrap-admin-url http://${CONTROLLER_IP}:35357 \
+  --bootstrap-internal-url http://${CONTROLLER_IP}:5000 \
+  --bootstrap-public-url http://${CONTROLLER_IP}:5000
+
+#keystone-manage pki_setup --keystone-user=root --keystone-group=daemon

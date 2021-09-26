@@ -1,0 +1,33 @@
+From e53f9da41a45f24329e42cef4796b68c70bfefcb Mon Sep 17 00:00:00 2001
+From: Mark Asselstine <mark.asselstine@windriver.com>
+Date: Fri, 13 Nov 2015 10:48:59 -0500
+Subject: [PATCH] Makefile: skip building docs
+
+We don't have cross build sphinx-build support in Poky so skip
+building the docs. The user can build the docs on the target, where we
+do have sphinx-build support available.
+
+Signed-off-by: Mark Asselstine <mark.asselstine@windriver.com>
+---
+ Makefile | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 40bccab..d93943f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,11 +1,6 @@
+-.PHONY: doc
+-
+ test:
+ 	tox
+-doc:
+-	make -C doc html
+ clean:
+ 	rm -rf build dist aioeventlet.egg-info .tox
+ 	find -name "*.pyc" -delete
+ 	find -name "__pycache__" -exec rm -rf {} \;
+-	make -C doc clean
+-- 
+2.1.4
+

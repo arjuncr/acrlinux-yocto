@@ -1,0 +1,42 @@
+From bbc23b4723a5f60f2b6f4daf734194f9a3a315d8 Mon Sep 17 00:00:00 2001
+From: Donn Seeley <donn.seeley@windriver.com>
+Date: Wed, 24 Apr 2019 22:41:04 -0400
+Subject: [PATCH] Add the glusterfs package
+
+The glusterfs code for installing start-up scripts checks for systemd
+directories on the build host, and if it finds them, it chooses systemd
+style scripts, otherwise init.d style scripts.  This behavior might
+conceivably be suitable for self-hosted builds, but it's grossly broken
+for cross-build environments.  Since we want to install custom scripts
+regardless of which script style we support, we patch glusterfs so that
+it doesn't install any of its default start-up scripts.
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: Donn Seeley <donn.seeley@windriver.com>
+[Xulin: minor adjust to apply the patch]
+Signed-off-by: Xulin Sun <xulin.sun@windriver.com>
+[Yi: minor adjust to apply the patch on 3.11.1]
+Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
+[modify patch for release-6.1]
+Signed-off-by: Hongzhi.Song <hongzhi.song@windriver.com>
+---
+ extras/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extras/Makefile.am b/extras/Makefile.am
+index ff5ca9b..1f59746 100644
+--- a/extras/Makefile.am
++++ b/extras/Makefile.am
+@@ -10,7 +10,7 @@ endif
+ EditorModedir = $(docdir)
+ EditorMode_DATA = glusterfs-mode.el glusterfs.vim
+ 
+-SUBDIRS = init.d systemd benchmarking hook-scripts $(OCF_SUBDIR) LinuxRPM \
++SUBDIRS = benchmarking hook-scripts $(OCF_SUBDIR) LinuxRPM \
+           $(GEOREP_EXTRAS_SUBDIR) snap_scheduler firewalld cliutils python
+ 
+ confdir = $(sysconfdir)/glusterfs
+-- 
+2.8.1
+

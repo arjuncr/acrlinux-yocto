@@ -1,0 +1,12 @@
+[Unit]
+Description=Barebones OpenStack glance initialization
+After=postgresql-init.service keystone-init.service
+
+[Service]
+Type=oneshot
+ExecStart=%SYSCONFDIR%/glance/glance-init
+ExecStartPost=/bin/systemctl --no-reload disable glance-init.service
+RemainAfterExit=No
+
+[Install]
+WantedBy=multi-user.target

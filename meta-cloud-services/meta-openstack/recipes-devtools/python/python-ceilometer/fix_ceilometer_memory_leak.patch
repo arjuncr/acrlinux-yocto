@@ -1,0 +1,33 @@
+From fd4b8446cf3cf01a21f4b4a43897fe2603be5aba Mon Sep 17 00:00:00 2001
+From: Amy Fong <amy.fong@windriver.com>
+Date: Fri, 28 Mar 2014 15:58:45 -0400
+
+---
+ ceilometer/nova_client.py | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/ceilometer/nova_client.py b/ceilometer/nova_client.py
+index 084c4ea..0219d00 100644
+--- a/ceilometer/nova_client.py
++++ b/ceilometer/nova_client.py
+@@ -38,6 +38,12 @@ cfg.CONF.import_group('service_credentials', 'ceilometer.service')
+ 
+ LOG = log.getLogger(__name__)
+ 
++nova_client_opts = [
++    cfg.IntOpt('max_timing_buffer',
++               default=200,
++               help='The max number of the timing objects to keep'),
++]
++cfg.CONF.register_opts(nova_client_opts, group="nova_client")
+ 
+ def logged(func):
+ 
+@@ -75,6 +81,7 @@ class Client(object):
+             timeout=cfg.CONF.http_timeout,
+             http_log_debug=cfg.CONF.nova_http_log_debug,
+             no_cache=True)
++        self.nova_client.set_timings_max_len(cfg.CONF.nova_client.max_timing_buffer)
+ 
+     def _with_flavor_and_image(self, instances):
+         flavor_cache = {}

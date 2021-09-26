@@ -1,0 +1,64 @@
+OpenEmbedded BSP layer for Rockchip boards
+
+About:
+-----
+	The purpose of this layer is to provide OpenEmbedded BSP support for
+	Rockchip-based devices using upstream sources as much as possible.
+
+Dependencies:
+------------
+	URI: git://git.openembedded.org/openembedded-core
+	layers: meta
+	branch: matched branches (e.g. master, sumo, ...)
+
+Status of supported boards:
+--------------------------
+	builds and boots wic image:
+		rock-pi-4
+		tinker-board
+		tinker-board-s
+		vyasa-rk3288
+		firefly-rk3288
+	builds:
+		marsboard-rk3066
+		radxarock
+		rock2-square
+
+Maintenance:
+-----------
+	Please send pull requests, patches, comments, or questions to the
+	yocto mailing list (yocto@yoctoproject.org) CCing the maintainer
+
+	When sending patches, please make sure the email subject line includes
+	"[meta-rockchip][PATCH]" and follow the community's patch submission
+	guidelines, as described in:
+		https://www.openembedded.org/wiki/Commit_Patch_Message_Guidelines
+		https://www.openembedded.org/wiki/How_to_submit_a_patch_to_OpenEmbedded
+
+	For example, to send your most recent commit (i.e. just one patch),
+	please use something like:
+		git format-patch -M --subject-prefix="meta-rockchip][PATCH" HEAD^
+		git send-email --to yocto@yoctoproject.org --cc twoerner@gmail.com <your patch file>
+
+Maintainer:
+----------
+	Trevor Woerner <twoerner@gmail.com>
+
+Brief History:
+-------------
+	2014 April
+		- originally started by Julien Chauveau
+		- Romain Perier joins
+	2014 Sep
+		- Julien leaves
+	2015 Aug
+		- Trevor Woerner joins
+	2017 Mar
+		- developers from Rockchip fork this layer see:
+			https://github.com/rockchip-linux/meta-rockchip.git
+			http://rockchip.wikidot.com/yocto-user-guide
+	2017 May
+		- Romain leaves
+	2018 Feb
+		- Rockchip developers abandon their fork for buildroot
+			http://opensource.rock-chips.com/wiki_Buildroot

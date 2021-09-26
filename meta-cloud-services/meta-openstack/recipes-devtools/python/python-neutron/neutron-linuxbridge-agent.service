@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenStack Neutron Linux Bridge Agent
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=neutron
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p %LOCALSTATEDIR%/log/neutron
+ExecStartPre=/bin/chown neutron:adm %LOCALSTATEDIR%/log/neutron
+ExecStart=/usr/bin/neutron-linuxbridge-agent --config-file %SYSCONFDIR%/neutron/neutron.conf --config-file %SYSCONFDIR%/neutron/plugins/ml2/linuxbridge_agent.ini --log-file %LOCALSTATEDIR%/log/neutron/linuxbridge-agent.log
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

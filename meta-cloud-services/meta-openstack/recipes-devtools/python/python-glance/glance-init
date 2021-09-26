@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# Basic glance setup based on:
+# https://docs.openstack.org/glance/pike/install/install-debian.html
+#
+# Prerequisites: keystone must be available and bootstrapped
+#
+
+# Substitutions setup at do_intall()
+DB_USER=%DB_USER%
+GLANCE_USER=%GLANCE_USER%
+GLANCE_GROUP=%GLANCE_GROUP%
+CONTROLLER_IP=%CONTROLLER_IP%
+ADMIN_USER=%ADMIN_USER%
+ADMIN_PASSWORD=%ADMIN_PASSWORD%
+ADMIN_ROLE=%ADMIN_ROLE%
+SYSCONFDIR=%SYSCONFDIR%
+
+# Create the glance DB and grant the necessary permissions
+sudo -u postgres psql -c "CREATE DATABASE glance" 2> /dev/null
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE glance TO ${DB_USER}" 2> /dev/null
+
+source ${SYSCONFDIR}/keystone/admin-openrc
+
+openstack user create --domain default --password ${ADMIN_PASSWORD} ${GLANCE_USER}
+
+# Ensure the 'service' project exists
+openstack project show service > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    openstack project create service --domain default
+fi
+openstack role add --project service --user ${GLANCE_USER} ${ADMIN_ROLE}
+
+openstack service create --name glance --description "OpenStack Image" image
+openstack endpoint create --region RegionOne image public http://${CONTROLLER_IP}:9292
+openstack endpoint create --region RegionOne image internal http://${CONTROLLER_IP}:9292
+openstack endpoint create --region RegionOne image admin http://${CONTROLLER_IP}:9292
+
+sudo -u ${GLANCE_USER} glance-manage db_sync
+
+systemctl restart glance-registry
+systemctl restart glance-api

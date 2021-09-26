@@ -1,0 +1,20 @@
+[Unit]
+Description=OpenStack Image Service API
+After=postgresql.service keystone.service ntp.service rabbitmq-server.service
+
+[Service]
+User=%USER%
+Group=%GROUP%
+Type=simple
+WorkingDirectory=%LOCALSTATEDIR%/lib/glance
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p %LOCALSTATEDIR%/lock/glance %LOCALSTATEDIR%/log/glance %LOCALSTATEDIR%/lib/glance
+ExecStartPre=/bin/chown %USER%:%GROUP% %LOCALSTATEDIR%/lock/glance %LOCALSTATEDIR%/lib/glance
+ExecStartPre=/bin/chown %USER%:adm %LOCALSTATEDIR%/log/glance
+ExecStart=/usr/bin/glance-api --config-file=%SYSCONFDIR%/glance/glance-api.conf --log-file=%LOCALSTATEDIR%/log/glance/glance-api.log
+Restart=on-failure
+LimitNOFILE=65535
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

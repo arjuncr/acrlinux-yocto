@@ -1,0 +1,3 @@
+Defaults:%USER% !requiretty
+
+%USER% ALL = (root) NOPASSWD: /usr/bin/neutron-rootwrap

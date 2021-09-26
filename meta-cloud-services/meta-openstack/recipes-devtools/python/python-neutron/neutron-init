@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# Basic neutron setup based on:
+# https://docs.openstack.org/neutron/pike/install/controller-install-ubuntu.html
+#
+# Prerequisites: keystone must be available and bootstrapped
+#
+
+# Substitutions setup at do_intall()
+DB_USER=%DB_USER%
+NEUTRON_USER=%NEUTRON_USER%
+NEUTRON_GROUP=%NEUTRON_GROUP%
+CONTROLLER_IP=%CONTROLLER_IP%
+ADMIN_USER=%ADMIN_USER%
+ADMIN_PASSWORD=%ADMIN_PASSWORD%
+ADMIN_ROLE=%ADMIN_ROLE%
+SYSCONFDIR=%SYSCONFDIR%
+ROOT_HOME=%ROOT_HOME%
+
+# Create the neutron DB and grant the necessary permissions
+sudo -u postgres psql -c "CREATE DATABASE neutron" 2> /dev/null
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE neutron TO ${DB_USER}" 2> /dev/null
+
+source ${SYSCONFDIR}/keystone/admin-openrc
+
+openstack user create --domain default --password ${ADMIN_PASSWORD} ${NEUTRON_USER}
+
+# Ensure the 'service' project exists
+openstack project show service > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    openstack project create service --domain default
+fi
+openstack role add --project service --user ${NEUTRON_USER} ${ADMIN_ROLE}
+
+openstack service create --name neutron --description "OpenStack Networking" network
+openstack endpoint create --region RegionOne network public http://${CONTROLLER_IP}:9696
+openstack endpoint create --region RegionOne network internal http://${CONTROLLER_IP}:9696
+openstack endpoint create --region RegionOne network admin http://${CONTROLLER_IP}:9696
+
+sudo -u ${NEUTRON_USER} neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
+
+# Possibly move to rabbitmq-setup, for now we are the only service
+# that needs this so do it here.
+HOME=${ROOT_HOME} rabbitmqctl add_user openstack ${ADMIN_PASSWORD}
+HOME=${ROOT_HOME} rabbitmqctl set_permissions openstack ".*" ".*" ".*"
+
+# enable and start the various services
+systemctl enable neutron-server
+systemctl enable neutron-linuxbridge-agent
+systemctl enable neutron-dhcp-agent
+systemctl enable neutron-metadata-agent
+
+systemctl start neutron-server
+systemctl start neutron-linuxbridge-agent
+systemctl start neutron-dhcp-agent
+systemctl start neutron-metadata-agent

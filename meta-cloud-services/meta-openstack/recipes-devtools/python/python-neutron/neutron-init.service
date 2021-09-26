@@ -1,0 +1,12 @@
+[Unit]
+Description=Barebones OpenStack neutron initialization
+After=postgresql-init.service keystone-init.service
+
+[Service]
+Type=oneshot
+ExecStart=%SYSCONFDIR%/neutron/neutron-init
+ExecStartPost=/bin/systemctl --no-reload disable neutron-init.service
+RemainAfterExit=No
+
+[Install]
+WantedBy=multi-user.target

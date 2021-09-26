@@ -1,0 +1,12 @@
+[Unit]
+Description=Barebones OpenStack nova initialization
+After=postgresql-init.service keystone-init.service
+
+[Service]
+Type=oneshot
+ExecStart=%SYSCONFDIR%/nova/nova-init
+ExecStartPost=/bin/systemctl --no-reload disable nova-init.service
+RemainAfterExit=No
+
+[Install]
+WantedBy=multi-user.target

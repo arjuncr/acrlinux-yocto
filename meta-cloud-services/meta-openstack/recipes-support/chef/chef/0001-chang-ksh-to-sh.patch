@@ -1,0 +1,23 @@
+From b819187d45984b4bc37aebc41570a7f4fff94b14 Mon Sep 17 00:00:00 2001
+From: Lei Maohui <leimaohui@cn.fujitsu.com>
+Date: Tue, 4 Aug 2015 03:56:28 +0900
+Subject: [PATCH] chang ksh to sh
+
+Signed-off-by: Lei Maohui <leimaohui@cn.fujitsu.com>
+---
+ spec/functional/assets/chefinittest | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/spec/functional/assets/chefinittest b/spec/functional/assets/chefinittest
+index 79e064c..46a7c3b 100755
+--- a/spec/functional/assets/chefinittest
++++ b/spec/functional/assets/chefinittest
+@@ -1,4 +1,4 @@
+-#!/bin/ksh
++#!/bin/sh
+ 
+ function create_chef_txt {
+         touch /tmp/chefinittest.txt
+-- 
+1.8.4.2
+

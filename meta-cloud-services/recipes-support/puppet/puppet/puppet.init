@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+# chkconfig: 35 20 80
+# description: The puppet agent connects to a puppet master, requests a
+#              catalog of resources, and configures the local system.
+#
+
+# Get function from functions library
+. /etc/init.d/functions
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/bin/puppet
+DAEMON_OPTS="agent --server master --no-daemonize"
+NAME="agent"
+DESC="puppet agent"
+PIDFILE="/var/run/${NAME}.pid"
+PID=`test -f $PIDFILE && cat $PIDFILE`
+RETVAL=0
+
+test -x $DAEMON || exit 0
+
+[ -r /etc/default/puppet ] && . /etc/default/puppet
+
+reload_puppet_agent() {
+    start-stop-daemon --stop --quiet --signal HUP --pidfile $PIDFILE
+}
+
+start_puppet_agent() {
+    start-stop-daemon --start --quiet --pidfile $PIDFILE \
+        --startas $DAEMON -- $NAME $DAEMON_OPTS
+}
+
+stop_puppet_agent() {
+    start-stop-daemon --stop --retry TERM/10/KILL/5 --quiet --oknodo --pidfile $PIDFILE
+}
+
+status_puppet_agent() {
+    status_of_proc -p "${PIDFILE}" "${DAEMON}" "${NAME}"
+}
+
+case "$1" in
+    start)
+        echo -n "Starting $DESC"
+        start_puppet_agent
+        log_end_msg $?
+        ;;
+    stop)
+        echo -n "Stopping $DESC"
+        stop_puppet_agent
+        log_end_msg $?
+        ;;
+    reload)
+        echo -n "Reloading $DESC"
+        reload_puppet_agent
+        log_end_msg $?
+        ;;
+    status)
+        status_puppet_agent
+        ;;
+    restart|force-reload)
+        echo -n "Restarting $DESC"
+        stop_puppet_agent
+        start_puppet_agent
+        log_end_msg $?
+        ;;
+*)
+        echo "Usage: $0 {start|stop|status|restart|force-reload|reload}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

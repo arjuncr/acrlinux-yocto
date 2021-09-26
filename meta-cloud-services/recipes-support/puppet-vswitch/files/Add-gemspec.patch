@@ -1,0 +1,35 @@
+From 66ffd1621d30b3fe9ccbc0a7d21319b351833afb Mon Sep 17 00:00:00 2001
+From: Mark Asselstine <mark.asselstine@windriver.com>
+Date: Thu, 17 Dec 2015 14:06:18 -0500
+Subject: [PATCH] Add gemspec
+
+Started with an example from here
+http://guides.rubygems.org/make-your-own-gem/
+
+Signed-off-by: Mark Asselstine <mark.asselstine@windriver.com>
+---
+ puppet-vswitch.gemspec | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+ create mode 100644 puppet-vswitch.gemspec
+
+diff --git a/puppet-vswitch.gemspec b/puppet-vswitch.gemspec
+new file mode 100644
+index 0000000..eb4c44e
+--- /dev/null
++++ b/puppet-vswitch.gemspec
+@@ -0,0 +1,12 @@
++Gem::Specification.new do |s|
++  s.name        = 'puppet-vswitch'
++  s.version     = '3.0.0'
++  s.date        = '2015-11-27'
++  s.summary     = "Puppet provider for virtual switches."
++  s.description = s.summary
++  s.authors     = ["Puppet Labs"]
++  s.email       = ''
++  s.files       = %w(LICENSE README.md Rakefile) + Dir.glob('{lib,spec}/**/*')
++  s.homepage    = 'https://github.com/openstack/puppet-vswitch'
++  s.license     = 'Apache 2.0'
++end
+-- 
+2.1.4
+

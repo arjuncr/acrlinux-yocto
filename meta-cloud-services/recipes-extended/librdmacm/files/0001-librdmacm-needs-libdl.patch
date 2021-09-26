@@ -1,0 +1,32 @@
+From d2c39b265f397256482154ad7807260b347176fb Mon Sep 17 00:00:00 2001
+From: Dengke Du <dengke.du@windriver.com>
+Date: Thu, 21 Mar 2019 15:58:32 +0800
+Subject: [PATCH] librdmacm needs libdl
+
+Librdmacm links against libibverbs, and the current version of libibverbs
+uses dlopen(), so librdmacm must also link against libdl.
+
+Upstream-Status: Pending
+
+Signed-off-by: Donn Seeley <donn.seeley@windriver.com>
+Signed-off-by: Dengke Du <dengke.du@windriver.com>
+---
+ configure.ac | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/configure.ac b/configure.ac
+index 4a43995..2a7f4b9 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -39,6 +39,8 @@ AC_CHECK_SIZEOF(long)
+ dnl Checks for libraries
+ AC_CHECK_LIB(pthread, pthread_mutex_init, [],
+     AC_MSG_ERROR([pthread_mutex_init() not found.  librdmacm requires libpthread.]))
++AC_CHECK_LIB(dl, dlsym, [],
++    AC_MSG_ERROR([dlsym() not found.  librdmacm requires libdl.]))
+ if test "$disable_libcheck" != "yes"; then
+ AC_CHECK_LIB(ibverbs, ibv_cmd_open_xrcd, [],
+     AC_MSG_ERROR([ibv_cmd_open_xrcd() not found.  librdmacm requires libibverbs 1.1.8 or later.]))
+-- 
+2.7.4
+
