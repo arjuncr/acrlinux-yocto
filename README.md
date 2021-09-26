@@ -48,8 +48,8 @@ meta-acrlinux        = "master:153964ca4079907bd6597db12ac569d5003db417"
 ```
 
 ## Run with virual box   
-take the iso file from  
-acrlinux_build/deploy/images/acrlinux-x86-64/acrlinux-minimal-acrlinux-x86-64-<date-time>.iso
+find the iso file here:   
+build/acrlinux_build/deploy/images/acrlinux-x86-64/acrlinux-distro.iso  
    
 console login:     
 
