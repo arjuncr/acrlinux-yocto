@@ -49,30 +49,14 @@ meta-acrlinux        = "master:153964ca4079907bd6597db12ac569d5003db417"
 
 ```
 
-## Run with qemu  
-runqemu acrlinux_qemu_x86-64 nographic       
+## Run with virual box   
+take the iso file from  
+acrlinux_build/deploy/images/acrlinux-x86-64/acrlinux-minimal-acrlinux-x86-64-<date-time>.iso
    
 console login:     
 
 user name : root     
 password: no need of password      
 
-```
-[  OK  ] Started D-Bus System Message Bus.
-[  OK  ] Started Getty on tty1.
-[  OK  ] Started Serial Getty on ttyS0.
-[  OK  ] Started Serial Getty on ttyS1.
-[  OK  ] Reached target Login Prompts.
-         Starting User Login Management...
-[  OK  ] Listening on Load/Save RF …itch Status /dev/rfkill Watch.
-[  OK  ] Started User Login Management.
-[  OK  ] Reached target Multi-User System.
-         Starting Update UTMP about System Runlevel Changes...
-[  OK  ] Finished Update UTMP about System Runlevel Changes.
+  ![image](https://user-images.githubusercontent.com/29924920/134802663-ea504ffc-fb68-413b-bdbc-6db65e9cf499.png)
 
-Acrlinux disto 1.0.0 acrlinuxqemux86-64 ttyS0
-
-acrlinuxqemux86-64 login: root
-root@acrlinuxqemux86-64:~#
-
-```
