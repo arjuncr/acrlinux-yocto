@@ -17,6 +17,7 @@ ExecStop=@SBINDIR@/rpc.nfsd 0
 ExecStopPost=@SBINDIR@/exportfs -au
 ExecStopPost=@SBINDIR@/exportfs -f
 ExecReload=@SBINDIR@/exportfs -r
+StandardError=syslog
 RemainAfterExit=yes
 
 [Install]

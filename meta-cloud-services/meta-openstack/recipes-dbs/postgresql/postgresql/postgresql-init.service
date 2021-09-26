@@ -1,0 +1,12 @@
+[Unit]
+Description=Postgresql setup for OpenStack
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=%SYSCONFIGDIR%/postgresql/postgresql-init
+ExecStartPost=/bin/systemctl --no-reload disable postgresql-init.service
+RemainAfterExit=No
+
+[Install]
+WantedBy=multi-user.target

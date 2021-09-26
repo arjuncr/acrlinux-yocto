@@ -3,16 +3,14 @@ DESCRIPTION = "Forked code from glibc libary to extract only crypto part."
 HOMEPAGE = "https://github.com/besser82/libxcrypt"
 SECTION = "libs"
 LICENSE = "LGPLv2.1"
-LIC_FILES_CHKSUM = "file://LICENSING;md5=bd5d9777dfe7076c4f2928f12fed226a \
-                    file://COPYING.LIB;md5=4fbd65380cdd255951079008b364516c \
-                    "
+LIC_FILES_CHKSUM ?= "file://LICENSING;md5=3bb6614cf5880cbf1b9dbd9e3d145e2c \
+                     file://COPYING.LIB;md5=4fbd65380cdd255951079008b364516c \
+"
 
 inherit autotools pkgconfig
 
-SRC_URI = "git://github.com/besser82/libxcrypt.git;branch=${SRCBRANCH} \
-           file://0001-configure.ac-do-not-use-compute-symver-floor.patch \
-           "
-SRCREV = "94d84f92ca123d851586016c4678eb1f21c19029"
+SRC_URI = "git://github.com/besser82/libxcrypt.git;branch=${SRCBRANCH}"
+SRCREV = "823437d015cd4ab4d100ed205f218681b03ae45c"
 SRCBRANCH ?= "develop"
 
 PROVIDES = "virtual/crypt"

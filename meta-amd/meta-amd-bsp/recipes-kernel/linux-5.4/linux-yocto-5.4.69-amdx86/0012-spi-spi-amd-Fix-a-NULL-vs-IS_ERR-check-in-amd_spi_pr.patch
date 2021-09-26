@@ -1,0 +1,39 @@
+From 4eb734b0a4ab01dbc903941efc830ae33001c9a0 Mon Sep 17 00:00:00 2001
+From: Wei Yongjun <weiyongjun1@huawei.com>
+Date: Wed, 29 Apr 2020 02:54:26 +0000
+Subject: [PATCH 12/21] spi: spi-amd: Fix a NULL vs IS_ERR() check in
+ amd_spi_probe()
+
+In case of error, the function devm_ioremap_resource() returns ERR_PTR()
+and never returns NULL. The NULL test in the return value check should
+be replaced with IS_ERR().
+
+Fixes: bbb336f39efc ("spi: spi-amd: Add AMD SPI controller driver support")
+Signed-off-by: Wei Yongjun <weiyongjun1@huawei.com>
+Link: https://lore.kernel.org/r/20200429025426.167664-1-weiyongjun1@huawei.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/spi/spi-amd.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index f1b08db9d5b8..d0aacd4de1b9 100755
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -264,10 +264,9 @@ static int amd_spi_probe(struct platform_device *pdev)
+ 
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	amd_spi->io_remap_addr = devm_ioremap_resource(&pdev->dev, res);
+-
+-	if (!amd_spi->io_remap_addr) {
++	if (IS_ERR(amd_spi->io_remap_addr)) {
++		err = PTR_ERR(amd_spi->io_remap_addr);
+ 		dev_err(dev, "error %d ioremap of SPI registers failed\n", err);
+-		err = -ENOMEM;
+ 		goto err_free_master;
+ 	}
+ 	dev_dbg(dev, "io_remap_address: %p\n", amd_spi->io_remap_addr);
+-- 
+2.17.1
+

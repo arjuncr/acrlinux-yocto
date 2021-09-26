@@ -1,0 +1,35 @@
+From e23971fcc1425e06a11484e552fbc631c43f44d4 Mon Sep 17 00:00:00 2001
+From: Mark Asselstine <mark.asselstine@windriver.com>
+Date: Tue, 22 Dec 2015 11:05:22 -0500
+Subject: [PATCH] Add gemspec
+
+Started with an example from here
+http://guides.rubygems.org/make-your-own-gem/
+
+Signed-off-by: Mark Asselstine <mark.asselstine@windriver.com>
+---
+ puppetlabs-stdlib.gemspec | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+ create mode 100644 puppetlabs-stdlib.gemspec
+
+diff --git a/puppetlabs-stdlib.gemspec b/puppetlabs-stdlib.gemspec
+new file mode 100644
+index 0000000..6b7eee3
+--- /dev/null
++++ b/puppetlabs-stdlib.gemspec
+@@ -0,0 +1,12 @@
++Gem::Specification.new do |s|
++  s.name        = 'puppetlabs-stdlib'
++  s.version     = '4.10.0'
++  s.date        = '2015-12-15'
++  s.summary     = "Puppet Labs Standard Library module"
++  s.description = s.summary
++  s.authors     = ["Puppet Labs"]
++  s.email       = ''
++  s.files       = %w(LICENSE README.markdown Rakefile) + Dir.glob('{lib,spec}/**/*')
++  s.homepage    = 'https://github.com/puppetlabs/puppetlabs-stdlib'
++  s.license     = 'Apache 2.0'
++end
+-- 
+2.1.4
+

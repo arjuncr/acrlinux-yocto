@@ -1,0 +1,388 @@
+From 4343fa95a5f0e2e9c32faecc05e4aa1e12e27f72 Mon Sep 17 00:00:00 2001
+From: Adrian Calianu <adrian.calianu@enea.com>
+Date: Tue, 11 Aug 2015 13:21:33 +0200
+Subject: [PATCH] [PATCH] DO NOT UPSTREAM YET: Clean up GIC irq domain for ACPI
+
+From: Suravee Suthikulpanit <Suravee.Suthikulpanit@amd.com>
+Date: Tue, 20 Jan 2015 20:02:28 -0600
+
+Instead of using the irq_default_domain, define the acpi_irq_domain.
+This still have the same assumption that ACPI only support a single
+GIC domain.
+
+Also, rename acpi_gic_init() to acpi_irq_init()
+
+Upstream-Status: Pending
+
+Ported from 3.19 kernel, patch provided by AMD.
+
+Signed-off-by: Adrian Calianu <adrian.calianu@enea.com>
+---
+ arch/arm64/kernel/acpi.c             | 14 ++++--
+ drivers/acpi/gsi.c                   | 31 ++++++++++----
+ drivers/irqchip/irq-gic.c            | 83 ++++++++++++++++++++++++++++++------
+ drivers/irqchip/irqchip.c            |  2 +-
+ drivers/pci/pci-acpi.c               | 25 +++++++++++
+ include/linux/irqchip/arm-gic-acpi.h |  6 ++-
+ include/linux/irqchip/arm-gic.h      | 17 ++++++++
+ 7 files changed, 151 insertions(+), 27 deletions(-)
+
+diff --git a/arch/arm64/kernel/acpi.c b/arch/arm64/kernel/acpi.c
+index 8b83955..ea80ce2 100644
+--- a/arch/arm64/kernel/acpi.c
++++ b/arch/arm64/kernel/acpi.c
+@@ -319,7 +319,7 @@ void __init acpi_boot_table_init(void)
+ 	}
+ }
+ 
+-void __init acpi_gic_init(void)
++void __init acpi_irq_init(void)
+ {
+ 	struct acpi_table_header *table;
+ 	acpi_status status;
+@@ -329,6 +329,14 @@ void __init acpi_gic_init(void)
+ 	if (acpi_disabled)
+ 		return;
+ 
++    /**
++     * NOTE: We need to declare this before we initialize the GIC
++     *       so that we can use pointers to MADT table and MSI_FRAME sub-table
++     *       for reference.
++     */
++    acpi_gbl_permanent_mmap = 1;
++
++
+ 	status = acpi_get_table_with_size(ACPI_SIG_MADT, 0, &table, &tbl_size);
+ 	if (ACPI_FAILURE(status)) {
+ 		const char *msg = acpi_format_exception(status);
+@@ -337,8 +345,8 @@ void __init acpi_gic_init(void)
+ 		return;
+ 	}
+ 
+-	err = gic_v2_acpi_init(table);
+-	if (err)
++    err = gic_v2_acpi_init(table, &acpi_irq_domain);
++    if (err || !acpi_irq_domain)
+ 		pr_err("Failed to initialize GIC IRQ controller");
+ 
+ 	early_acpi_os_unmap_memory((char *)table, tbl_size);
+diff --git a/drivers/acpi/gsi.c b/drivers/acpi/gsi.c
+index 38208f2..7f1b8a0 100644
+--- a/drivers/acpi/gsi.c
++++ b/drivers/acpi/gsi.c
+@@ -11,6 +11,7 @@
+ #include <linux/acpi.h>
+ #include <linux/irq.h>
+ #include <linux/irqdomain.h>
++#include <linux/of.h>
+ 
+ enum acpi_irq_model_id acpi_irq_model;
+ 
+@@ -43,6 +44,8 @@ static unsigned int acpi_gsi_get_irq_type(int trigger, int polarity)
+  * Returns: linux IRQ number on success (>0)
+  *          -EINVAL on failure
+  */
++static struct irq_domain *acpi_irq_domain;
++
+ int acpi_gsi_to_irq(u32 gsi, unsigned int *irq)
+ {
+ 	/*
+@@ -50,7 +53,7 @@ int acpi_gsi_to_irq(u32 gsi, unsigned int *irq)
+ 	 * the mapping corresponding to default domain by passing NULL
+ 	 * as irq_domain parameter
+ 	 */
+-	*irq = irq_find_mapping(NULL, gsi);
++	*irq = irq_find_mapping(acpi_irq_domain, gsi);
+ 	/*
+ 	 * *irq == 0 means no mapping, that should
+ 	 * be reported as a failure
+@@ -74,20 +77,32 @@ int acpi_register_gsi(struct device *dev, u32 gsi, int trigger,
+ {
+ 	unsigned int irq;
+ 	unsigned int irq_type = acpi_gsi_get_irq_type(trigger, polarity);
++    struct gic_irq_alloc_info info;
++    struct irq_data *d;
+ 
+ 	/*
+ 	 * There is no way at present to look-up the IRQ domain on ACPI,
+ 	 * hence always create mapping referring to the default domain
+ 	 * by passing NULL as irq_domain parameter
+ 	 */
+-	irq = irq_create_mapping(NULL, gsi);
+-	if (!irq)
+-		return -EINVAL;
++    if (!acpi_irq_domain)
++        BUG();
++
++    if (gic_init_irq_alloc_info(GIC_INT_TYPE_NONE,
++                    gsi, irq_type, NULL, &info) < 0)
++        return -EINVAL;
++
++    irq = __irq_domain_alloc_irqs(acpi_irq_domain, -1, 1,
++                      dev_to_node(dev), &info, false);
++    if (irq < 0)
++        return -ENOSPC;
++
++    d = irq_domain_get_irq_data(acpi_irq_domain, irq);
++    if (!d)
++        return -EFAULT;
++
++    d->chip->irq_set_type(d, irq_type);
+ 
+-	/* Set irq type if specified and different than the current one */
+-	if (irq_type != IRQ_TYPE_NONE &&
+-		irq_type != irq_get_trigger_type(irq))
+-		irq_set_irq_type(irq, irq_type);
+ 	return irq;
+ }
+ EXPORT_SYMBOL_GPL(acpi_register_gsi);
+diff --git a/drivers/irqchip/irq-gic.c b/drivers/irqchip/irq-gic.c
+index 01999d7..997d073 100644
+--- a/drivers/irqchip/irq-gic.c
++++ b/drivers/irqchip/irq-gic.c
+@@ -854,10 +854,13 @@ static int gic_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
+ 	int i, ret;
+ 	irq_hw_number_t hwirq;
+ 	unsigned int type = IRQ_TYPE_NONE;
+-	struct of_phandle_args *irq_data = arg;
++	struct gic_irq_alloc_info *info = arg;
++	u32 intspec[3];
+ 
+-	ret = gic_irq_domain_xlate(domain, irq_data->np, irq_data->args,
+-				   irq_data->args_count, &hwirq, &type);
++   intspec[0] = info->gic_int_type;
++   intspec[1] = info->hwirq;
++   intspec[2] = info->irq_type;
++   ret = gic_irq_domain_xlate(domain, info->ref, intspec, 3, &hwirq, &type);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -867,6 +870,51 @@ static int gic_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
+ 	return 0;
+ }
+ 
++int gic_init_irq_alloc_info(unsigned int gic_int_type, unsigned int irq,
++               unsigned int irq_type, void *ref,
++               struct gic_irq_alloc_info *info)
++{
++   if (!info)
++       return -EINVAL;
++
++   if ((irq_type & IRQ_TYPE_SENSE_MASK) != IRQ_TYPE_LEVEL_HIGH &&
++       (irq_type & IRQ_TYPE_SENSE_MASK) != IRQ_TYPE_EDGE_RISING)
++       return -EINVAL;
++
++   info->ref = ref;
++   info->irq_type = irq_type;
++
++   /*
++    * ACPI have no bindings to indicate SPI or PPI, so we
++    * use different mappings from DT in ACPI.
++    *
++    * For FDT
++    * PPI interrupt: in the range [0, 15];
++    * SPI interrupt: in the range [0, 987];
++    *
++    * For ACPI, GSI should be unique so using
++    * the hwirq directly for the mapping:
++    * PPI interrupt: in the range [16, 31];
++    * SPI interrupt: in the range [32, 1019];
++    */
++
++   if (gic_int_type != ~0U) {
++       info->gic_int_type = gic_int_type;
++       info->hwirq = irq;
++
++   } else {
++       if (irq < 32) {
++           info->gic_int_type = GIC_INT_TYPE_PPI;
++           info->hwirq = irq - 16;
++       } else {
++           info->gic_int_type = GIC_INT_TYPE_SPI;
++           info->hwirq = irq - 32;
++       }
++   }
++
++   return 0;
++}
++
+ static const struct irq_domain_ops gic_irq_domain_hierarchy_ops = {
+ 	.xlate = gic_irq_domain_xlate,
+ 	.alloc = gic_irq_domain_alloc,
+@@ -945,7 +993,10 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
+ 		gic_irqs = 1020;
+ 	gic->gic_irqs = gic_irqs;
+ 
+-	if (node) {		/* DT case */
++    if (!acpi_disabled) {   /* ACPI case */
++        gic->domain = irq_domain_add_linear(node, gic_irqs,
++                        &gic_irq_domain_hierarchy_ops, gic);
++    } else if (node) {  /* DT case */
+ 		gic->domain = irq_domain_add_linear(node, gic_irqs,
+ 						    &gic_irq_domain_hierarchy_ops,
+ 						    gic);
+@@ -992,9 +1043,9 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
+ 	gic_pm_init(gic);
+ }
+ 
+-#ifdef CONFIG_OF
+ static int gic_cnt __initdata;
+ 
++#ifdef CONFIG_OF
+ static int __init
+ gic_of_init(struct device_node *node, struct device_node *parent)
+ {
+@@ -1086,7 +1137,7 @@ gic_acpi_parse_madt_distributor(struct acpi_subtable_header *header,
+ }
+ 
+ int __init
+-gic_v2_acpi_init(struct acpi_table_header *table)
++gic_v2_acpi_init(struct acpi_table_header *table, struct irq_domain **domain)
+ {
+ 	void __iomem *cpu_base, *dist_base;
+ 	int count;
+@@ -1130,13 +1181,19 @@ gic_v2_acpi_init(struct acpi_table_header *table)
+ 		return -ENOMEM;
+ 	}
+ 
+-	/*
+-	 * Initialize zero GIC instance (no multi-GIC support). Also, set GIC
+-	 * as default IRQ domain to allow for GSI registration and GSI to IRQ
+-	 * number translation (see acpi_register_gsi() and acpi_gsi_to_irq()).
+-	 */
+-	gic_init_bases(0, -1, dist_base, cpu_base, 0, NULL);
+-	irq_set_default_host(gic_data[0].domain);
++    gic_init_bases(gic_cnt, -1, dist_base, cpu_base, 0, NULL);
++    *domain = gic_data[gic_cnt].domain;
++
++    if (!*domain) {
++        pr_err("Unable to create domain\n");
++        return -EFAULT;
++    }
++
++    if (IS_ENABLED(CONFIG_ARM_GIC_V2M)) {
++        gicv2m_acpi_init(table, gic_data[gic_cnt].domain);
++    }
++
++    gic_cnt++;
+ 
+ 	acpi_irq_model = ACPI_IRQ_MODEL_GIC;
+ 	return 0;
+diff --git a/drivers/irqchip/irqchip.c b/drivers/irqchip/irqchip.c
+index afd1af3..0d3a8b1 100644
+--- a/drivers/irqchip/irqchip.c
++++ b/drivers/irqchip/irqchip.c
+@@ -28,5 +28,5 @@ void __init irqchip_init(void)
+ {
+ 	of_irq_init(__irqchip_of_table);
+ 
+-	acpi_irq_init();
++    acpi_irq_init();
+ }
+diff --git a/drivers/pci/pci-acpi.c b/drivers/pci/pci-acpi.c
+index 6f6f175..fe42097 100644
+--- a/drivers/pci/pci-acpi.c
++++ b/drivers/pci/pci-acpi.c
+@@ -12,6 +12,7 @@
+ #include <linux/pci.h>
+ #include <linux/pci_hotplug.h>
+ #include <linux/module.h>
++#include <linux/msi.h>
+ #include <linux/pci-aspm.h>
+ #include <linux/pci-acpi.h>
+ #include <linux/pm_runtime.h>
+@@ -714,3 +715,27 @@ static int __init acpi_pci_init(void)
+ 	return 0;
+ }
+ arch_initcall(acpi_pci_init);
++
++#ifdef CONFIG_PCI_MSI
++void pci_acpi_set_phb_msi_domain(struct pci_bus *bus) {
++#ifdef CONFIG_GENERIC_MSI_IRQ_DOMAIN
++   u32 msi_frame_id = 0;
++   int num;
++
++   if (acpi_disabled)
++       return;
++
++   /**
++    * Since ACPI 5.1 currently does not define
++    * a way to associate MSI frame ID to a device,
++    * we can only support single MSI frame at the moment.
++    * Therefore, the id 0 is used as a default.
++    */
++   num = msi_get_num_irq_domain();
++   if (num <= 0 || num > 1)
++       return;
++
++        dev_set_msi_domain(&bus->dev, irq_find_acpi_msi_domain(msi_frame_id));
++#endif
++}
++#endif /* CONFIG_PCI_MSI */
+diff --git a/include/linux/irqchip/arm-gic-acpi.h b/include/linux/irqchip/arm-gic-acpi.h
+index de3419e..fa8033b 100644
+--- a/include/linux/irqchip/arm-gic-acpi.h
++++ b/include/linux/irqchip/arm-gic-acpi.h
+@@ -10,6 +10,8 @@
+ #ifndef ARM_GIC_ACPI_H_
+ #define ARM_GIC_ACPI_H_
+ 
++#include <linux/irqchip/arm-gic.h>
++
+ #ifdef CONFIG_ACPI
+ 
+ /*
+@@ -22,8 +24,8 @@
+ 
+ struct acpi_table_header;
+ 
+-int gic_v2_acpi_init(struct acpi_table_header *table);
+-void acpi_gic_init(void);
++void acpi_irq_init(void);
++int gic_v2_acpi_init(struct acpi_table_header *table, struct irq_domain **domain);
+ #else
+ static inline void acpi_gic_init(void) { }
+ #endif
+diff --git a/include/linux/irqchip/arm-gic.h b/include/linux/irqchip/arm-gic.h
+index 9de976b..f490f26 100644
+--- a/include/linux/irqchip/arm-gic.h
++++ b/include/linux/irqchip/arm-gic.h
+@@ -89,12 +89,25 @@
+ #define GICH_MISR_EOI			(1 << 0)
+ #define GICH_MISR_U			(1 << 1)
+ 
++#define GIC_INT_TYPE_SPI       0
++#define GIC_INT_TYPE_PPI       1
++#define GIC_INT_TYPE_NONE      ~0U
++
+ #ifndef __ASSEMBLY__
+ 
+ #include <linux/irqdomain.h>
+ 
+ struct device_node;
+ 
++struct gic_irq_alloc_info {
++
++   enum irq_domain_ref_type ref_type;
++   void *ref;
++   unsigned int irq_type;
++   unsigned int gic_int_type;
++   unsigned int hwirq;
++};
++
+ void gic_set_irqchip_flags(unsigned long flags);
+ void gic_init_bases(unsigned int, int, void __iomem *, void __iomem *,
+ 		    u32 offset, struct device_node *);
+@@ -114,5 +127,9 @@ int gic_get_cpu_id(unsigned int cpu);
+ void gic_migrate_target(unsigned int new_cpu_id);
+ unsigned long gic_get_sgir_physaddr(void);
+ 
++extern int gic_init_irq_alloc_info(unsigned int gic_int_type, unsigned int irq,
++                  unsigned int irq_type, void *ref,
++                  struct gic_irq_alloc_info *info);
++
+ #endif /* __ASSEMBLY */
+ #endif
+-- 
+1.9.1
+

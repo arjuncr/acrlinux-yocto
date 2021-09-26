@@ -168,7 +168,7 @@ def deploy(args, config, basepath, workspace):
         if args.strip and not args.dry_run:
             # Fakeroot copy to new destination
             srcdir = recipe_outdir
-            recipe_outdir = os.path.join(rd.getVar('WORKDIR'), 'deploy-target-stripped')
+            recipe_outdir = os.path.join(rd.getVar('WORKDIR'), 'devtool-deploy-target-stripped')
             if os.path.isdir(recipe_outdir):
                 bb.utils.remove(recipe_outdir, True)
             exec_fakeroot(rd, "cp -af %s %s" % (os.path.join(srcdir, '.'), recipe_outdir), shell=True)
@@ -336,7 +336,7 @@ def register_commands(subparsers, context):
     parser_deploy.add_argument('-e', '--ssh-exec', help='Executable to use in place of ssh')
     parser_deploy.add_argument('-P', '--port', help='Specify port to use for connection to the target')
     parser_deploy.add_argument('-I', '--key',
-                               help='Specify ssh private key for connection to the target')
+                               help='Specifiy ssh private key for connection to the target')
 
     strip_opts = parser_deploy.add_mutually_exclusive_group(required=False)
     strip_opts.add_argument('-S', '--strip',
@@ -361,6 +361,6 @@ def register_commands(subparsers, context):
     parser_undeploy.add_argument('-e', '--ssh-exec', help='Executable to use in place of ssh')
     parser_undeploy.add_argument('-P', '--port', help='Specify port to use for connection to the target')
     parser_undeploy.add_argument('-I', '--key',
-                               help='Specify ssh private key for connection to the target')
+                               help='Specifiy ssh private key for connection to the target')
 
     parser_undeploy.set_defaults(func=undeploy)

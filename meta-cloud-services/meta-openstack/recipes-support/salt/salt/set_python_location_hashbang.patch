@@ -1,0 +1,158 @@
+Upstream-Status: Pending
+
+# The Salt SysV scripts require that the process name of the salt
+# components have the form "salt-<component>".
+# The current python shebangs on the salt components scripts spwans
+# processes that are generically named python. Changed shebang so
+# process names will be identifiable by the init scripts.
+
+diff --git a/scripts/salt b/scripts/salt
+index 1a6d6b4d0c..0408ad07b2 100755
+--- a/scripts/salt
++++ b/scripts/salt
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Publish commands to the salt system from the command line on the master.
+ '''
+diff --git a/scripts/salt-api b/scripts/salt-api
+index 6f028bacb6..7a51117822 100755
+--- a/scripts/salt-api
++++ b/scripts/salt-api
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ # Import salt libs
+ from salt.scripts import salt_api
+diff --git a/scripts/salt-call b/scripts/salt-call
+index 5b8a8f3935..9ddda9428d 100755
+--- a/scripts/salt-call
++++ b/scripts/salt-call
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Directly call a salt command in the modules, does not require a running salt
+ minion to run.
+diff --git a/scripts/salt-cloud b/scripts/salt-cloud
+index e977b68179..01c593881c 100755
+--- a/scripts/salt-cloud
++++ b/scripts/salt-cloud
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Publish commands to the salt system from the command line on the master.
+ '''
+diff --git a/scripts/salt-cp b/scripts/salt-cp
+index 3da660d137..dcc3f11554 100755
+--- a/scripts/salt-cp
++++ b/scripts/salt-cp
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Publish commands to the salt system from the command line on the master.
+ '''
+diff --git a/scripts/salt-extend b/scripts/salt-extend
+index 5385a7b6a9..b01c584bb4 100755
+--- a/scripts/salt-extend
++++ b/scripts/salt-extend
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Quickstart for creating an/or extending the functionality of your SaltStack installation
+ 
+diff --git a/scripts/salt-key b/scripts/salt-key
+index cb26dfd5a6..596b202a3f 100755
+--- a/scripts/salt-key
++++ b/scripts/salt-key
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Manage the authentication keys with salt-key
+ '''
+diff --git a/scripts/salt-master b/scripts/salt-master
+index b4323bd532..52bb47dc47 100755
+--- a/scripts/salt-master
++++ b/scripts/salt-master
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Start the salt-master
+ '''
+diff --git a/scripts/salt-minion b/scripts/salt-minion
+index 74a9fa1d67..4a23ed9122 100755
+--- a/scripts/salt-minion
++++ b/scripts/salt-minion
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ This script is used to kick off a salt minion daemon
+ '''
+diff --git a/scripts/salt-proxy b/scripts/salt-proxy
+index e921e6590b..443774ef85 100755
+--- a/scripts/salt-proxy
++++ b/scripts/salt-proxy
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # -*- coding: utf-8 -*-
+ '''
+ This script is used to kick off a salt proxy minion daemon
+diff --git a/scripts/salt-run b/scripts/salt-run
+index 2b2d86554c..cfef160ab0 100755
+--- a/scripts/salt-run
++++ b/scripts/salt-run
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Execute a salt convenience routine
+ '''
+diff --git a/scripts/salt-ssh b/scripts/salt-ssh
+index 4f21baa5f4..77bb6ceb38 100755
+--- a/scripts/salt-ssh
++++ b/scripts/salt-ssh
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Execute the salt ssh system
+ '''
+diff --git a/scripts/salt-syndic b/scripts/salt-syndic
+index d6faf2df63..896bf5f3b0 100755
+--- a/scripts/salt-syndic
++++ b/scripts/salt-syndic
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ This script is used to kick off a salt syndic daemon
+ '''
+diff --git a/scripts/salt-unity b/scripts/salt-unity
+index b0a2d31597..ff1fa9034c 100755
+--- a/scripts/salt-unity
++++ b/scripts/salt-unity
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ from salt.scripts import salt_unity
+ 
+diff --git a/scripts/spm b/scripts/spm
+index 027864ee11..4d9b648b5d 100755
+--- a/scripts/spm
++++ b/scripts/spm
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ '''
+ Publish commands to the salt system from the command line on the master.
+ 

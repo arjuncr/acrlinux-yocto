@@ -6,7 +6,6 @@ DISABLE_STATIC = ""
 WAF_PYTHON ?= "python3"
 
 B = "${WORKDIR}/build"
-do_configure[cleandirs] += "${B}"
 
 EXTRA_OECONF_append = " ${PACKAGECONFIG_CONFARGS}"
 

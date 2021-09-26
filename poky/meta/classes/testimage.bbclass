@@ -3,8 +3,6 @@
 # Released under the MIT license (see COPYING.MIT)
 
 inherit metadata_scm
-inherit image-artifact-names
-
 # testimage.bbclass enables testing of qemu images using python unittests.
 # Most of the tests are commands run on target image over ssh.
 # To use it add testimage to global inherit and call your target image with -c testimage
@@ -305,7 +303,6 @@ def testimage_main(d):
                       'dump_dir'    : d.getVar("TESTIMAGE_DUMP_DIR"),
                       'serial_ports': len(d.getVar("SERIAL_CONSOLES").split()),
                       'ovmf'        : ovmf,
-                      'tmpfsdir'    : d.getVar("RUNQEMU_TMPFS_DIR"),
                     }
 
     if d.getVar("TESTIMAGE_BOOT_PATTERNS"):
@@ -320,7 +317,6 @@ def testimage_main(d):
     target_kwargs['powercontrol_extra_args'] = d.getVar("TEST_POWERCONTROL_EXTRA_ARGS") or ""
     target_kwargs['serialcontrol_cmd'] = d.getVar("TEST_SERIALCONTROL_CMD") or None
     target_kwargs['serialcontrol_extra_args'] = d.getVar("TEST_SERIALCONTROL_EXTRA_ARGS") or ""
-    target_kwargs['testimage_dump_target'] = d.getVar("testimage_dump_target") or ""
 
     def export_ssh_agent(d):
         import os

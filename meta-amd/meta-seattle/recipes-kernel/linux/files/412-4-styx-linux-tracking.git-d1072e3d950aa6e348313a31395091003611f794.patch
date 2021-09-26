@@ -1,0 +1,54 @@
+From a0f4d0a183159646da9eacd6645c9c8de1fe958c Mon Sep 17 00:00:00 2001
+From: Adrian Calianu <adrian.calianu@enea.com>
+Date: Mon, 10 Aug 2015 18:05:08 +0200
+Subject: [PATCH] [PATCH] probe-only
+
+From: Suravee Suthikulpanit <Suravee.Suthikulpanit@amd.com>
+Date: Tue, 20 Jan 2015 19:48:59 -0600
+
+Upstream-Status: Pending
+
+Ported from 3.19 kernel, patch provided by AMD.
+
+Signed-off-by: Adrian Calianu <adrian.calianu@enea.com>
+---
+ drivers/pci/pci.c       | 8 +++++++-
+ drivers/pci/setup-bus.c | 3 ++-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index acc4b6e..221f47f 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -1198,7 +1198,13 @@ EXPORT_SYMBOL_GPL(pci_load_and_free_saved_state);
+ 
+ int __weak pcibios_enable_device(struct pci_dev *dev, int bars)
+ {
+-	return pci_enable_resources(dev, bars);
++    int err;
++
++    if (!pci_has_flag(PCI_PROBE_ONLY)) {
++        err = pci_enable_resources(dev, bars);
++        if (err < 0)
++            return err;
++    }
+ }
+ 
+ static int do_pci_enable_device(struct pci_dev *dev, int bars)
+diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
+index 508cc56..029222c 100644
+--- a/drivers/pci/setup-bus.c
++++ b/drivers/pci/setup-bus.c
+@@ -1737,7 +1737,8 @@ void __init pci_assign_unassigned_resources(void)
+ 	struct pci_bus *root_bus;
+ 
+ 	list_for_each_entry(root_bus, &pci_root_buses, node)
+-		pci_assign_unassigned_root_bus_resources(root_bus);
++        if (!pci_has_flag(PCI_PROBE_ONLY))
++            pci_assign_unassigned_root_bus_resources(root_bus);
+ }
+ 
+ void pci_assign_unassigned_bridge_resources(struct pci_dev *bridge)
+-- 
+1.9.1
+

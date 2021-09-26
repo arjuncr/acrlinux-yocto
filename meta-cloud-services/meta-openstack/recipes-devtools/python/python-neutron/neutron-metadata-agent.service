@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenStack Neutron Metadata Agent
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=neutron
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p %LOCALSTATEDIR%/log/neutron
+ExecStartPre=/bin/chown neutron:adm %LOCALSTATEDIR%/log/neutron
+ExecStart=/usr/bin/neutron-metadata-agent --config-file %SYSCONFDIR%/neutron/neutron.conf --config-file %SYSCONFDIR%/neutron/metadata_agent.ini --log-file %LOCALSTATEDIR%/log/neutron/metadata-agent.log
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

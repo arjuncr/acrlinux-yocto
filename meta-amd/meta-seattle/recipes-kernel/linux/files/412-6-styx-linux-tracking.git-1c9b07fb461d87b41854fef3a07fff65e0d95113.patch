@@ -1,0 +1,163 @@
+From 4f0837d4d1274b6e25d6bd76ac448e25592d6ea0 Mon Sep 17 00:00:00 2001
+From: Adrian Calianu <adrian.calianu@enea.com>
+Date: Tue, 11 Aug 2015 13:37:41 +0200
+Subject: [PATCH] [PATCH] DO NOT UPSTREAM YET: irqdomain
+
+From: Suravee Suthikulpanit <Suravee.Suthikulpanit@amd.com>
+Date: Tue, 20 Jan 2015 20:02:28 -0600
+
+Upstream-Status: Pending
+
+Ported from 3.19 kernel, patch provided by AMD.
+
+Signed-off-by: Adrian Calianu <adrian.calianu@enea.com>
+---
+ include/linux/irqdomain.h | 14 +++++++++++++-
+ kernel/irq/irqdomain.c    | 44 ++++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 49 insertions(+), 9 deletions(-)
+
+diff --git a/include/linux/irqdomain.h b/include/linux/irqdomain.h
+index 676d730..ddd6602 100644
+--- a/include/linux/irqdomain.h
++++ b/include/linux/irqdomain.h
+@@ -45,6 +45,11 @@ struct irq_data;
+ /* Number of irqs reserved for a legacy isa controller */
+ #define NUM_ISA_INTERRUPTS	16
+ 
++enum irq_domain_ref_type {
++       IRQ_DOMAIN_REF_OF_DEV_NODE = 0,
++       IRQ_DOMAIN_REF_ACPI_MSI_FRAME,
++};
++
+ /**
+  * struct irq_domain_ops - Methods for irq_domain objects
+  * @match: Match an interrupt controller device node to a host, returns
+@@ -61,7 +66,7 @@ struct irq_data;
+  * to setup the irq_desc when returning from map().
+  */
+ struct irq_domain_ops {
+-	int (*match)(struct irq_domain *d, struct device_node *node);
++    int (*match)(struct irq_domain *d, enum irq_domain_ref_type type, void *data);
+ 	int (*map)(struct irq_domain *d, unsigned int virq, irq_hw_number_t hw);
+ 	void (*unmap)(struct irq_domain *d, unsigned int virq);
+ 	int (*xlate)(struct irq_domain *d, struct device_node *node,
+@@ -116,6 +121,11 @@ struct irq_domain {
+ 
+ 	/* Optional data */
+ 	struct device_node *of_node;
++    enum irq_domain_ref_type type;
++    union {
++        struct device_node *of_node;
++        void *acpi_ref;
++    };
+ 	struct irq_domain_chip_generic *gc;
+ #ifdef	CONFIG_IRQ_DOMAIN_HIERARCHY
+ 	struct irq_domain *parent;
+@@ -163,6 +173,8 @@ struct irq_domain *irq_domain_add_legacy(struct device_node *of_node,
+ 					 void *host_data);
+ extern struct irq_domain *irq_find_host(struct device_node *node);
+ extern void irq_set_default_host(struct irq_domain *host);
++extern struct irq_domain *irq_find_domain(enum irq_domain_ref_type type,
++                     void *ref);
+ 
+ /**
+  * irq_domain_add_linear() - Allocate and register a linear revmap irq_domain.
+diff --git a/kernel/irq/irqdomain.c b/kernel/irq/irqdomain.c
+index 7fac311..0f0559f 100644
+--- a/kernel/irq/irqdomain.c
++++ b/kernel/irq/irqdomain.c
+@@ -1,5 +1,6 @@
+ #define pr_fmt(fmt)  "irq: " fmt
+ 
++#include <linux/acpi.h>
+ #include <linux/debugfs.h>
+ #include <linux/hardirq.h>
+ #include <linux/interrupt.h>
+@@ -187,10 +188,11 @@ struct irq_domain *irq_domain_add_legacy(struct device_node *of_node,
+ EXPORT_SYMBOL_GPL(irq_domain_add_legacy);
+ 
+ /**
+- * irq_find_host() - Locates a domain for a given device node
+- * @node: device-tree node of the interrupt controller
++  * irq_find_domain() - Locates a domain for a given a refence pointer
++  * @type: specify irq domain reference pointer type to be match
++  * @ref: pointer to the reference data structure to be matched
+  */
+-struct irq_domain *irq_find_host(struct device_node *node)
++struct irq_domain *irq_find_domain(enum irq_domain_ref_type type, void *ref)
+ {
+ 	struct irq_domain *h, *found = NULL;
+ 	int rc;
+@@ -202,10 +204,16 @@ struct irq_domain *irq_find_host(struct device_node *node)
+ 	 */
+ 	mutex_lock(&irq_domain_mutex);
+ 	list_for_each_entry(h, &irq_domain_list, link) {
+-		if (h->ops->match)
+-			rc = h->ops->match(h, node);
+-		else
+-			rc = (h->of_node != NULL) && (h->of_node == node);
++        if (h->ops->match) {
++            rc = h->ops->match(h, type, ref);
++        } else if (type == IRQ_DOMAIN_REF_OF_DEV_NODE ||
++               type == IRQ_DOMAIN_REF_ACPI_MSI_FRAME) {
++            /* Here, we just need to compare reference pointer */
++            rc = (h->of_node != NULL) && (h->of_node == ref);
++        } else {
++            /* For non-DT and non-ACPI reference, must specify match */
++            BUG();
++        }
+ 
+ 		if (rc) {
+ 			found = h;
+@@ -215,6 +223,16 @@ struct irq_domain *irq_find_host(struct device_node *node)
+ 	mutex_unlock(&irq_domain_mutex);
+ 	return found;
+ }
++EXPORT_SYMBOL_GPL(irq_find_domain);
++
++/**
++ * irq_find_host() - Locates a domain for a given device node
++ * @node: device-tree node of the interrupt controller
++ */
++struct irq_domain *irq_find_host(struct device_node *node)
++{
++   return irq_find_domain(IRQ_DOMAIN_REF_OF_DEV_NODE, node);
++}
+ EXPORT_SYMBOL_GPL(irq_find_host);
+ 
+ /**
+@@ -464,12 +482,16 @@ int irq_create_strict_mappings(struct irq_domain *domain, unsigned int irq_base,
+ }
+ EXPORT_SYMBOL_GPL(irq_create_strict_mappings);
+ 
++//SURAVEE: HACK
++#include <linux/irqchip/arm-gic.h>
++
+ unsigned int irq_create_of_mapping(struct of_phandle_args *irq_data)
+ {
+ 	struct irq_domain *domain;
+ 	irq_hw_number_t hwirq;
+ 	unsigned int type = IRQ_TYPE_NONE;
+ 	int virq;
++    struct gic_irq_alloc_info info;
+ 
+ 	domain = irq_data->np ? irq_find_host(irq_data->np) : irq_default_domain;
+ 	if (!domain) {
+@@ -496,7 +518,13 @@ unsigned int irq_create_of_mapping(struct of_phandle_args *irq_data)
+ 		if (virq)
+ 			return virq;
+ 
+-		virq = irq_domain_alloc_irqs(domain, 1, NUMA_NO_NODE, irq_data);
++//SURAVEE: TODO: Need to make this as part of irqdomain ops
++        if (gic_init_irq_alloc_info(irq_data->args[0], irq_data->args[1],
++                        irq_data->args[2], irq_data->np,
++                        &info))
++            return 0;
++
++        virq = irq_domain_alloc_irqs(domain, 1, NUMA_NO_NODE, &info);
+ 		if (virq <= 0)
+ 			return 0;
+ 	} else {
+-- 
+1.9.1
+

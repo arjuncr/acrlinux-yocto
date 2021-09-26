@@ -1,0 +1,74 @@
+meta-openstack
+===================
+
+This layer provides support for building the packages from the OpenStack project.
+The layer contains recipes for the nova, glance, keystone, cinder, quantum, swift
+and horizon components.
+
+The bbappend files for some recipes (e.g. postgresql) and preferred version setting
+(e.g. python-networkx)in this layer need to have 'openstack' in DISTRO_FEATURES to
+have effect. To enable them, add in configuration file the following line.
+
+  DISTRO_FEATURES_append = " openstack"
+
+If meta-openstack is included, but openstack is not enabled as a
+distro feature a warning is printed at parse time:
+
+    You have included the meta-openstack layer, but
+    'openstack' has not been enabled in your DISTRO_FEATURES. Some bbappend files
+    and preferred version setting may not take effect. See the meta-openstack README
+    for details on enabling openstack support.
+
+If you know what you are doing, this warning can be disabled by setting the following
+variable in your configuration:
+
+  SKIP_META_OPENSTACK_SANITY_CHECK = 1
+
+Dependencies
+------------
+
+This layer depends on:
+
+URI: git://git.openembedded.org/openembedded-core
+branch: master
+revision: HEAD
+prio: default
+
+URI: git://git.openembedded.org/meta-openembedded
+revision: HEAD
+layers: meta-oe
+	meta-networking
+        meta-filesystems
+        meta-webserver
+        meta-python
+
+URI: git://git.yoctoproject.org/meta-virtualization
+branch: master
+revision: head
+
+Maintenance
+-----------
+
+Send pull requests, patches, comments or questions to meta-virtualization@lists.yoctoproject.org
+
+When sending single patches, please using something like:
+'git send-email -1 -M --to meta-virtualization@lists.yoctoproject.org --subject-prefix=meta-virtualization][m-c-s][PATCH'
+
+Maintainers: Bruce Ashfield <bruce.ashfield@gmail.com>
+
+License
+-------
+
+All metadata is MIT licensed unless otherwise stated. Source code included
+in tree for individual recipes is under the LICENSE stated in each recipe
+(.bb file) unless otherwise stated.
+
+Target images
+-------------
+
+Target images: openstack-image-compute, openstack-image-network, openstack-image-controller.
+
+They contain the packagegroups with the same name and can be used to create
+the types of targets. There are no extra configurations required to build
+these images. See README.setup for more details.
+

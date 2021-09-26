@@ -24,7 +24,6 @@ SDK_INCLUDE_NATIVESDK ?= "0"
 SDK_INCLUDE_BUILDTOOLS ?= '1'
 
 SDK_RECRDEP_TASKS ?= ""
-SDK_CUSTOM_TEMPLATECONF ?= "0"
 
 SDK_LOCAL_CONF_WHITELIST ?= ""
 SDK_LOCAL_CONF_BLACKLIST ?= "CONF_VERSION \
@@ -200,9 +199,6 @@ python copy_buildsystem () {
     buildsystem = oe.copy_buildsystem.BuildSystem('extensible SDK', d)
     baseoutpath = d.getVar('SDK_OUTPUT') + '/' + d.getVar('SDKPATH')
 
-    #check if custome templateconf path is set
-    use_custom_templateconf = d.getVar('SDK_CUSTOM_TEMPLATECONF')
-
     # Determine if we're building a derivative extensible SDK (from devtool build-sdk)
     derivative = (d.getVar('SDK_DERIVATIVE') or '') == '1'
     if derivative:
@@ -375,10 +371,6 @@ python copy_buildsystem () {
             # Map gcc-dependent uninative sstate cache for installer usage
             f.write('SSTATE_MIRRORS += " file://universal/(.*) file://universal-4.9/\\1 file://universal-4.9/(.*) file://universal-4.8/\\1"\n\n')
 
-            if d.getVar("PRSERV_HOST"):
-                # Override this, we now include PR data, so it should only point ot the local database
-                f.write('PRSERV_HOST = "localhost:0"\n\n')
-
             # Allow additional config through sdk-extra.conf
             fn = bb.cookerdata.findConfigFile('sdk-extra.conf', d)
             if fn:
@@ -402,29 +394,8 @@ python copy_buildsystem () {
         bb.utils.mkdirhier(os.path.join(baseoutpath, 'cache'))
         shutil.copyfile(builddir + '/cache/bb_unihashes.dat', baseoutpath + '/cache/bb_unihashes.dat')
 
-    # If PR Service is in use, we need to export this as well
-    bb.note('Do we have a pr database?')
-    if d.getVar("PRSERV_HOST"):
-        bb.note('Writing PR database...')
-        # Based on the code in classes/prexport.bbclass
-        import oe.prservice
-        #dump meta info of tables
-        localdata = d.createCopy()
-        localdata.setVar('PRSERV_DUMPOPT_COL', "1")
-        localdata.setVar('PRSERV_DUMPDIR', os.path.join(baseoutpath, 'conf'))
-        localdata.setVar('PRSERV_DUMPFILE', '${PRSERV_DUMPDIR}/prserv.inc')
-
-        bb.note('PR Database write to %s' % (localdata.getVar('PRSERV_DUMPFILE')))
-
-        retval = oe.prservice.prserv_dump_db(localdata)
-        if not retval:
-            bb.error("prexport_handler: export failed!")
-            return
-        (metainfo, datainfo) = retval
-        oe.prservice.prserv_export_tofile(localdata, metainfo, datainfo, True)
-
     # Use templateconf.cfg file from builddir if exists
-    if os.path.exists(builddir + '/conf/templateconf.cfg') and use_custom_templateconf == '1':
+    if os.path.exists(builddir + '/conf/templateconf.cfg'):
         shutil.copyfile(builddir + '/conf/templateconf.cfg', baseoutpath + '/conf/templateconf.cfg')
     else:
         # Write a templateconf.cfg
@@ -556,17 +527,11 @@ python copy_buildsystem () {
     # sdk_ext_postinst() below) thus the checksum we take here would always
     # be different.
     manifest_file_list = ['conf/*']
-    esdk_manifest_excludes = (d.getVar('ESDK_MANIFEST_EXCLUDES') or '').split()
-    esdk_manifest_excludes_list = []
-    for exclude_item in esdk_manifest_excludes:
-        esdk_manifest_excludes_list += glob.glob(os.path.join(baseoutpath, exclude_item))
     manifest_file = os.path.join(baseoutpath, 'conf', 'sdk-conf-manifest')
     with open(manifest_file, 'w') as f:
         for item in manifest_file_list:
             for fn in glob.glob(os.path.join(baseoutpath, item)):
                 if fn == manifest_file:
-                    continue
-                if fn in esdk_manifest_excludes_list:
                     continue
                 chksum = bb.utils.sha256_file(fn)
                 f.write('%s\t%s\n' % (chksum, os.path.relpath(fn, baseoutpath)))
@@ -694,10 +659,7 @@ sdk_ext_postinst() {
 
 		# Make sure when the user sets up the environment, they also get
 		# the buildtools-tarball tools in their path.
-		echo "# Save and reset OECORE_NATIVE_SYSROOT as buildtools may change it" >> $env_setup_script
-		echo "SAVED=\"\$OECORE_NATIVE_SYSROOT\"" >> $env_setup_script
 		echo ". $target_sdk_dir/buildtools/environment-setup*" >> $env_setup_script
-		echo "OECORE_NATIVE_SYSROOT=\"\$SAVED\"" >> $env_setup_script
 	fi
 
 	# Allow bitbake environment setup to be ran as part of this sdk.

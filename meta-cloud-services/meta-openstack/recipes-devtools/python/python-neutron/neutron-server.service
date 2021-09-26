@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenStack Neutron Server
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=neutron
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p %LOCALSTATEDIR%/log/neutron
+ExecStartPre=/bin/chown neutron:adm %LOCALSTATEDIR%/log/neutron
+ExecStart=/usr/bin/neutron-server --config-file %SYSCONFDIR%/neutron/neutron.conf --config-file %SYSCONFDIR%/neutron/plugins/ml2/ml2_conf.ini --log-file %LOCALSTATEDIR%/log/neutron/server.log
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

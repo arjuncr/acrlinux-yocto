@@ -1,0 +1,12 @@
+[Unit]
+Description=Barebones OpenStack keystone initialization
+After=postgresql-init.service
+
+[Service]
+Type=oneshot
+ExecStart=%SYSCONFIGDIR%/keystone/keystone-init
+ExecStartPost=/bin/systemctl --no-reload disable keystone-init.service
+RemainAfterExit=No
+
+[Install]
+WantedBy=multi-user.target

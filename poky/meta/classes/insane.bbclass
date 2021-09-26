@@ -22,12 +22,14 @@ QA_SANE = "True"
 
 # Elect whether a given type of error is a warning or error, they may
 # have been set by other files.
-WARN_QA ?= " libdir xorg-driver-abi \
-            textrel incompatible-license files-invalid \
-            infodir build-deps src-uri-bad symlink-to-sysroot multilib \
+WARN_QA ?= "ldflags useless-rpaths rpaths staticdev libdir xorg-driver-abi \
+            textrel already-stripped incompatible-license files-invalid \
+            installed-vs-shipped compile-host-path install-host-path \
+            pn-overrides infodir build-deps src-uri-bad \
+            unknown-configure-option symlink-to-sysroot multilib \
             invalid-packageconfig host-user-contaminated uppercase-pn patch-fuzz \
             mime mime-xdg unlisted-pkg-lics unhandled-features-check \
-            missing-update-alternatives native-last \
+            missing-update-alternatives \
             "
 ERROR_QA ?= "dev-so debug-deps dev-deps debug-files arch pkgconfig la \
             perms dep-cmp pkgvarcheck perm-config perm-line perm-link \
@@ -35,9 +37,6 @@ ERROR_QA ?= "dev-so debug-deps dev-deps debug-files arch pkgconfig la \
             version-going-backwards expanded-d invalid-chars \
             license-checksum dev-elf file-rdeps configure-unsafe \
             configure-gettext perllocalpod shebang-size \
-            already-stripped installed-vs-shipped ldflags compile-host-path \
-            install-host-path pn-overrides unknown-configure-option \
-            useless-rpaths rpaths staticdev \
             "
 # Add usrmerge QA check based on distro feature
 ERROR_QA_append = "${@bb.utils.contains('DISTRO_FEATURES', 'usrmerge', ' usrmerge', '', d)}"
@@ -87,8 +86,7 @@ def package_qa_add_message(messages, section, new_msg):
 
 QAPATHTEST[shebang-size] = "package_qa_check_shebang_size"
 def package_qa_check_shebang_size(path, name, d, elf, messages):
-    import stat
-    if os.path.islink(path) or stat.S_ISFIFO(os.stat(path).st_mode) or elf:
+    if os.path.islink(path) or elf:
         return
 
     try:
@@ -176,7 +174,7 @@ def package_qa_check_useless_rpaths(file, name, d, elf, messages):
             if rpath_eq(rpath, libdir) or rpath_eq(rpath, base_libdir):
                 # The dynamic linker searches both these places anyway.  There is no point in
                 # looking there again.
-                package_qa_add_message(messages, "useless-rpaths", "%s: %s contains probably-redundant RPATH %s" % (name, package_qa_clean_path(file, d), rpath))
+                package_qa_add_message(messages, "useless-rpaths", "%s: %s contains probably-redundant RPATH %s" % (name, package_qa_clean_path(file, d, name), rpath))
 
 QAPATHTEST[dev-so] = "package_qa_check_dev"
 def package_qa_check_dev(path, name, d, elf, messages):
@@ -185,8 +183,8 @@ def package_qa_check_dev(path, name, d, elf, messages):
     """
 
     if not name.endswith("-dev") and not name.endswith("-dbg") and not name.endswith("-ptest") and not name.startswith("nativesdk-") and path.endswith(".so") and os.path.islink(path):
-        package_qa_add_message(messages, "dev-so", "non -dev/-dbg/nativesdk- package contains symlink .so: %s path '%s'" % \
-                 (name, package_qa_clean_path(path,d)))
+        package_qa_add_message(messages, "dev-so", "non -dev/-dbg/nativesdk- package %s contains symlink .so '%s'" % \
+                 (name, package_qa_clean_path(path, d, name)))
 
 QAPATHTEST[dev-elf] = "package_qa_check_dev_elf"
 def package_qa_check_dev_elf(path, name, d, elf, messages):
@@ -196,8 +194,8 @@ def package_qa_check_dev_elf(path, name, d, elf, messages):
     install link-time .so files that are linker scripts.
     """
     if name.endswith("-dev") and path.endswith(".so") and not os.path.islink(path) and elf:
-        package_qa_add_message(messages, "dev-elf", "-dev package contains non-symlink .so: %s path '%s'" % \
-                 (name, package_qa_clean_path(path,d)))
+        package_qa_add_message(messages, "dev-elf", "-dev package %s contains non-symlink .so '%s'" % \
+                 (name, package_qa_clean_path(path, d, name)))
 
 QAPATHTEST[staticdev] = "package_qa_check_staticdev"
 def package_qa_check_staticdev(path, name, d, elf, messages):
@@ -210,7 +208,7 @@ def package_qa_check_staticdev(path, name, d, elf, messages):
 
     if not name.endswith("-pic") and not name.endswith("-staticdev") and not name.endswith("-ptest") and path.endswith(".a") and not path.endswith("_nonshared.a") and not '/usr/lib/debug-static/' in path and not '/.debug-static/' in path:
         package_qa_add_message(messages, "staticdev", "non -staticdev package contains static .a library: %s path '%s'" % \
-                 (name, package_qa_clean_path(path,d)))
+                 (name, package_qa_clean_path(path,d, name)))
 
 QAPATHTEST[mime] = "package_qa_check_mime"
 def package_qa_check_mime(path, name, d, elf, messages):
@@ -366,14 +364,14 @@ def package_qa_check_arch(path,name,d, elf, messages):
             target_os == "linux-gnu_ilp32" or re.match(r'mips64.*32', d.getVar('DEFAULTTUNE')))
     is_bpf = (oe.qa.elf_machine_to_string(elf.machine()) == "BPF")
     if not ((machine == elf.machine()) or is_32 or is_bpf):
-        package_qa_add_message(messages, "arch", "Architecture did not match (%s, expected %s) in %s" % \
-                 (oe.qa.elf_machine_to_string(elf.machine()), oe.qa.elf_machine_to_string(machine), package_qa_clean_path(path, d, name)))
+        package_qa_add_message(messages, "arch", "Architecture did not match (%s, expected %s) on %s" % \
+                 (oe.qa.elf_machine_to_string(elf.machine()), oe.qa.elf_machine_to_string(machine), package_qa_clean_path(path,d)))
     elif not ((bits == elf.abiSize()) or is_32 or is_bpf):
-        package_qa_add_message(messages, "arch", "Bit size did not match (%d, expected %d) in %s" % \
-                 (elf.abiSize(), bits, package_qa_clean_path(path, d, name)))
+        package_qa_add_message(messages, "arch", "Bit size did not match (%d to %d) %s on %s" % \
+                 (bits, elf.abiSize(), bpn, package_qa_clean_path(path,d)))
     elif not ((littleendian == elf.isLittleEndian()) or is_bpf):
-        package_qa_add_message(messages, "arch", "Endiannes did not match (%d, expected %d) in %s" % \
-                 (elf.isLittleEndian(), littleendian, package_qa_clean_path(path,d, name)))
+        package_qa_add_message(messages, "arch", "Endiannes did not match (%d to %d) on %s" % \
+                 (littleendian, elf.isLittleEndian(), package_qa_clean_path(path,d)))
 
 QAPATHTEST[desktop] = "package_qa_check_desktop"
 def package_qa_check_desktop(path, name, d, elf, messages):
@@ -1346,37 +1344,6 @@ python () {
         d.setVarFlag('do_package_qa', 'rdeptask', '')
     for i in issues:
         package_qa_handle_error("pkgvarcheck", "%s: Variable %s is set as not being package specific, please fix this." % (d.getVar("FILE"), i), d)
-
-    if 'native-last' not in (d.getVar('INSANE_SKIP') or "").split():
-        for native_class in ['native', 'nativesdk']:
-            if bb.data.inherits_class(native_class, d):
-
-                inherited_classes = d.getVar('__inherit_cache', False) or []
-                needle = os.path.join('classes', native_class)
-
-                bbclassextend = (d.getVar('BBCLASSEXTEND') or '').split()
-                # BBCLASSEXTEND items are always added in the end
-                skip_classes = bbclassextend
-                if bb.data.inherits_class('native', d) or 'native' in bbclassextend:
-                    # native also inherits nopackages and relocatable bbclasses
-                    skip_classes.extend(['nopackages', 'relocatable'])
-
-                broken_order = []
-                for class_item in reversed(inherited_classes):
-                    if needle not in class_item:
-                        for extend_item in skip_classes:
-                            if os.path.join('classes', '%s.bbclass' % extend_item) in class_item:
-                                break
-                        else:
-                            pn = d.getVar('PN')
-                            broken_order.append(os.path.basename(class_item))
-                    else:
-                        break
-                if broken_order:
-                    package_qa_handle_error("native-last", "%s: native/nativesdk class is not inherited last, this can result in unexpected behaviour. "
-                                             "Classes inherited after native/nativesdk: %s" % (pn, " ".join(broken_order)), d)
-
-
     qa_sane = d.getVar("QA_SANE")
     if not qa_sane:
         bb.fatal("Fatal QA errors found, failing task.")

@@ -22,7 +22,6 @@ SPLASH_IMAGES = "file://psplash-poky-img.h;outsuffix=default"
 python __anonymous() {
     oldpkgs = d.getVar("PACKAGES").split()
     splashfiles = d.getVar('SPLASH_IMAGES').split()
-    mlprefix = d.getVar('MLPREFIX') or ''
     pkgs = []
     localpaths = []
     for uri in splashfiles:
@@ -47,9 +46,9 @@ python __anonymous() {
     # Set these so that we have less work to do in do_compile and do_install_append
     d.setVar("SPLASH_INSTALL", " ".join(pkgs))
     d.setVar("SPLASH_LOCALPATHS", " ".join(localpaths))
-    for p in pkgs:
-        d.prependVar("PACKAGES", "%s%s " % (mlprefix, p))
 
+    d.prependVar("PACKAGES", "%s " % (" ".join(pkgs)))
+    mlprefix = d.getVar('MLPREFIX') or ''
     pn = d.getVar('PN') or ''
     for p in pkgs:
         ep = '%s%s' % (mlprefix, p)
@@ -102,10 +101,6 @@ do_install_append() {
 	if ${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'true', 'false', d)}; then
 		install -d ${D}${sysconfdir}/init.d/
 		install -m 0755 ${WORKDIR}/psplash-init ${D}${sysconfdir}/init.d/psplash.sh
-
-		# make fifo for psplash
-		install -d ${D}/mnt
-		mkfifo ${D}/mnt/psplash_fifo
 	fi
 
 	if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
@@ -126,5 +121,3 @@ SYSTEMD_SERVICE_${PN} += "${@bb.utils.contains('PACKAGECONFIG', 'systemd', 'pspl
 
 INITSCRIPT_NAME = "psplash.sh"
 INITSCRIPT_PARAMS = "start 0 S . stop 20 0 1 6 ."
-
-FILES_${PN} += "/mnt"

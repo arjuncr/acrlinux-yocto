@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenStack Neutron DHCP Agent
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=neutron
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p %LOCALSTATEDIR%/log/neutron
+ExecStartPre=/bin/chown neutron:adm %LOCALSTATEDIR%/log/neutron
+ExecStart=/usr/bin/neutron-dhcp-agent --config-file %SYSCONFDIR%/neutron/neutron.conf --config-file %SYSCONFDIR%/neutron/dhcp_agent.ini --log-file %LOCALSTATEDIR%/log/neutron/dhcp-agent.log
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

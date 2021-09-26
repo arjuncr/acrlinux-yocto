@@ -5,7 +5,7 @@ DEPENDS = "virtual/${TARGET_PREFIX}gcc libgcc-initial linux-libc-headers"
 
 PROVIDES = "virtual/libc"
 PROVIDES += "virtual/libintl virtual/libiconv"
-inherit autotools texinfo systemd
+inherit autotools texinfo features_check systemd
 
 LEAD_SONAME = "libc.so"
 
@@ -20,7 +20,6 @@ CACHED_CONFIGUREVARS += " \
   libc_cv_ssp_strong=no \
   libc_cv_ssp_all=no \
   libc_cv_ssp=no \
-  libc_cv_include_x86_isa_level=no \
 "
 
 # ifunc doesn't appear to work on mips, casuses libbfd assertion failures

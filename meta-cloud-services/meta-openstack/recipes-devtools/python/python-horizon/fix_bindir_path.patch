@@ -1,0 +1,24 @@
+From e56f1df2d7567ed428888429f51a6f4a0864a414 Mon Sep 17 00:00:00 2001
+From: Mihai Prica <prica.mihai@gmail.com>
+Date: Tue, 23 Jul 2013 10:56:00 +0300
+Subject: [PATCH] python-horizon: Fix bindir search path
+
+Upstream-Status: Inappropriate [configuration]
+
+---
+ openstack_dashboard/settings.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/openstack_dashboard/settings.py b/openstack_dashboard/settings.py
+index 51db4ca..a1f1d32 100644
+--- a/openstack_dashboard/settings.py
++++ b/openstack_dashboard/settings.py
+@@ -38,7 +38,7 @@ warnings.formatwarning = lambda message, category, *args, **kwargs: \
+     '%s: %s' % (category.__name__, message)
+ 
+ ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+-BIN_DIR = os.path.abspath(os.path.join(ROOT_PATH, '..', 'bin'))
++BIN_DIR = os.path.abspath(os.path.join(ROOT_PATH, 'bin'))
+ 
+ if ROOT_PATH not in sys.path:
+     sys.path.append(ROOT_PATH)

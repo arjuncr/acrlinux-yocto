@@ -5,7 +5,6 @@
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, runqemu
 from oeqa.utils.sshcontrol import SSHControl
-import glob
 import os
 import json
 
@@ -210,7 +209,7 @@ class ImageFeatures(OESelftestTestCase):
         image_name = 'core-image-minimal'
 
         all_image_types = set(get_bb_var("IMAGE_TYPES", image_name).split())
-        blacklist = set(('container', 'elf', 'f2fs', 'multiubi', 'tar.zst', 'wic.zst'))
+        blacklist = set(('container', 'elf', 'f2fs', 'multiubi', 'tar.zst'))
         img_types = all_image_types - blacklist
 
         config = 'IMAGE_FSTYPES += "%s"\n'\
@@ -274,7 +273,7 @@ PNBLACKLIST[busybox] = "Don't build this"
         Author:      Humberto Ibarra <humberto.ibarra.lopez@intel.com>
                      Yeoh Ee Peng <ee.peng.yeoh@intel.com>
         """
-      
+        import glob
         image_name = 'core-image-minimal'
         features = 'IMAGE_GEN_DEBUGFS = "1"\n'
         features += 'IMAGE_FSTYPES_DEBUGFS = "tar.bz2"\n'
@@ -295,12 +294,3 @@ PNBLACKLIST[busybox] = "Don't build this"
         for t in dbg_symbols_targets:
             result = runCmd('objdump --syms %s | grep debug' % t)
             self.assertTrue("debug" in result.output, msg='Failed to find debug symbol: %s' % result.output)
-
-    def test_empty_image(self):
-        """Test creation of image with no packages"""
-        bitbake('test-empty-image')
-        res_dir = get_bb_var('DEPLOY_DIR_IMAGE')
-        images = os.path.join(res_dir, "test-empty-image-*.manifest")
-        result = glob.glob(images)
-        with open(result[1],"r") as f:
-                self.assertEqual(len(f.read().strip()),0)

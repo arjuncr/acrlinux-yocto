@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# Basic cinder setup based on:
+# https://docs.openstack.org/cinder/pike/install/cinder-controller-install-ubuntu.html
+#
+# Prerequisites: keystone must be available and bootstrapped
+#
+
+# Substitutions setup at do_intall()
+DB_USER=%DB_USER%
+CINDER_USER=%CINDER_USER%
+CINDER_GROUP=%CINDER_GROUP%
+CONTROLLER_IP=%CONTROLLER_IP%
+ADMIN_USER=%ADMIN_USER%
+ADMIN_PASSWORD=%ADMIN_PASSWORD%
+ADMIN_ROLE=%ADMIN_ROLE%
+SYSCONFDIR=%SYSCONFDIR%
+
+sudo -u postgres psql -c "CREATE DATABASE \"cinder\"" 2> /dev/null
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"cinder\" TO ${DB_USER}" 2> /dev/null
+
+source ${SYSCONFDIR}/keystone/admin-openrc
+
+openstack user create --domain default --password ${ADMIN_PASSWORD} ${CINDER_USER}
+
+# Ensure the 'service' project exists
+openstack project show service > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    openstack project create service --domain default
+fi
+openstack role add --project service --user ${CINDER_USER} ${ADMIN_ROLE}
+
+# Create cinderv2 service and service endpoints
+openstack service create --name cinderv2 --description "OpenStack Block Storage" volumev2
+openstack endpoint create --region RegionOne volumev2 public http://${CONTROLLER_IP}:8776/v2/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev2 internal http://${CONTROLLER_IP}:8776/v2/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev2 admin http://${CONTROLLER_IP}:8776/v2/%\(project_id\)s
+
+# Create cinderv3 service and service endpoints
+openstack service create --name cinderv3 --description "OpenStack Block Storage" volumev3
+openstack endpoint create --region RegionOne volumev3 public http://${CONTROLLER_IP}:8776/v3/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev3 internal http://${CONTROLLER_IP}:8776/v3/%\(project_id\)s
+openstack endpoint create --region RegionOne volumev3 admin http://${CONTROLLER_IP}:8776/v3/%\(project_id\)s
+
+sudo -u ${CINDER_USER} cinder-manage db sync
+
+# Enable cinder services now that they are configured
+systemctl enable cinder-api
+systemctl enable cinder-volume
+systemctl enable cinder-backup
+systemctl enable cinder-scheduler
+
+# Start our services
+systemctl start cinder-api
+systemctl start cinder-volume
+systemctl start cinder-backup
+systemctl start cinder-scheduler

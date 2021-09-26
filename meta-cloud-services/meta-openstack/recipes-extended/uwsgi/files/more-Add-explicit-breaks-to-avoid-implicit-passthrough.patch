@@ -1,0 +1,50 @@
+From 54666237455273e147eadb1904d261ed7624a8b6 Mon Sep 17 00:00:00 2001
+From: Paul Tagliamonte <tag@pault.ag>
+Date: Mon, 14 Aug 2017 15:42:15 -0400
+Subject: [PATCH] Add explicit breaks to avoid implicit passthrough.
+
+commit 54666237455273e147eadb1904d261ed7624a8b6 from upstream
+git://github.com/unbit/uwsgi.git
+
+-Werror=implicit-fallthrough was added in gcc 7.1, which will
+throw a compile error if a switch has an implicit passthrough.
+
+Seeing as how this switch doesn't appear to depend on passthrough to
+function correctly, I've added explicit breaks to the switch.
+
+From https://gcc.gnu.org/gcc-7/changes.html:
+
+-Wimplicit-fallthrough warns when a switch case falls through. This
+warning has five different levels. The compiler is able to parse a wide
+range of fallthrough comments, depending on the level. It also handles
+control-flow statements, such as ifs. It's possible to suppress the
+warning by either adding a fallthrough comment, or by using a null
+statement: __attribute__ ((fallthrough)); (C, C++), or [[fallthrough]];
+(C++17), or [[gnu::fallthrough]]; (C++11/C++14). This warning is enabled
+by -Wextra.
+---
+ core/routing.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/core/routing.c b/core/routing.c
+index 5887ec3..0cd6ea6 100644
+--- a/core/routing.c
++++ b/core/routing.c
+@@ -1792,10 +1792,10 @@ static int uwsgi_route_condition_ipv6in(struct wsgi_request *wsgi_req, struct uw
+ 
+ 	int i = (pfxlen / 32);
+ 	switch (i) {
+-	case 0: mask[0] = 0;
+-	case 1: mask[1] = 0;
+-	case 2: mask[2] = 0;
+-	case 3: mask[3] = 0;
++	case 0: mask[0] = 0; break;
++	case 1: mask[1] = 0; break;
++	case 2: mask[2] = 0; break;
++	case 3: mask[3] = 0; break;
+ 	}
+ 
+ 	if (pfxlen % 32)
+-- 
+2.7.4
+

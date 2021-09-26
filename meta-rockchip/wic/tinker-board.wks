@@ -1,0 +1,8 @@
+# Copyright (C) 2019 Garmin Ltd. or its subsidiaries
+# Released under the MIT license (see COPYING.MIT for the terms)
+
+include rk3288-boot.wks
+
+part / --align 131072 --ondisk ${RK_BOOT_DEVICE} --source rootfs --fstype=ext4 --label root
+
+bootloader --ptable gpt --append="console=tty1 console=ttyS2,115200n8 rw root=/dev/${RK_BOOT_DEVICE}p7 rootfstype=ext4 init=/sbin/init"

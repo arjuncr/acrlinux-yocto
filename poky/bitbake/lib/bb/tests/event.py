@@ -6,18 +6,17 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
-import collections
-import importlib
+import unittest
+import bb
 import logging
-import pickle
+import bb.compat
+import bb.event
+import importlib
 import threading
 import time
-import unittest
+import pickle
 from unittest.mock import Mock
 from unittest.mock import call
-
-import bb
-import bb.event
 from bb.msg import BBLogFormatter
 
 
@@ -76,7 +75,7 @@ class EventHandlingTest(unittest.TestCase):
 
     def _create_test_handlers(self):
         """ Method used to create a test handler ordered dictionary """
-        test_handlers = collections.OrderedDict()
+        test_handlers = bb.compat.OrderedDict()
         test_handlers["handler1"] = self._test_process.handler1
         test_handlers["handler2"] = self._test_process.handler2
         return test_handlers
@@ -97,7 +96,7 @@ class EventHandlingTest(unittest.TestCase):
 
     def test_clean_class_handlers(self):
         """ Test clean_class_handlers method """
-        cleanDict = collections.OrderedDict()
+        cleanDict = bb.compat.OrderedDict()
         self.assertEqual(cleanDict,
                          bb.event.clean_class_handlers())
 

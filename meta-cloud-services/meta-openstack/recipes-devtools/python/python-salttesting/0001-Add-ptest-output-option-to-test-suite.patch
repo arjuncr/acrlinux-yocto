@@ -1,0 +1,229 @@
+From 1950b943b7173198f345a1cff7b7f771cbac2244 Mon Sep 17 00:00:00 2001
+From: Collin Richards <collin.richards@ni.com>
+Date: Tue, 28 Jun 2016 16:02:22 -0500
+Subject: [PATCH] Add ptest output option to test suite
+
+Extend salttesting to support outputing the results of running the test
+suite in ptest format.
+
+Upstream-Status: Inappropriate [OE specific]
+
+Signed-off-by: Collin Richards <collin.richards@ni.com>
+Natinst-ReviewBoard-ID: 143279
+---
+ salttesting/parser/__init__.py |  12 +++
+ salttesting/ptest.py           | 165 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 177 insertions(+)
+ create mode 100644 salttesting/ptest.py
+
+diff --git a/salttesting/parser/__init__.py b/salttesting/parser/__init__.py
+index 1e7275b..d8cba0c 100644
+--- a/salttesting/parser/__init__.py
++++ b/salttesting/parser/__init__.py
+@@ -25,6 +25,7 @@ from functools import partial
+ from contextlib import closing
+ 
+ from salttesting import TestLoader, TextTestRunner
++from salttesting.ptest import PTestRunner
+ from salttesting.version import __version_info__
+ from salttesting.xmlunit import HAS_XMLRUNNER, XMLTestRunner
+ try:
+@@ -264,6 +265,12 @@ class SaltTestingParser(optparse.OptionParser):
+             action='store_true',
+             help='Do NOT show the overall tests result'
+         )
++        self.output_options_group.add_option(
++            '--ptest-out',
++            dest='ptest_out',
++            default=False,
++            help='Output test results in PTest format'
++        )
+         self.add_option_group(self.output_options_group)
+ 
+         self.fs_cleanup_options_group = optparse.OptionGroup(
+@@ -491,6 +498,11 @@ class SaltTestingParser(optparse.OptionParser):
+                 verbosity=self.options.verbosity
+             ).run(tests)
+             self.testsuite_results.append((header, runner))
++        elif self.options.ptest_out:
++            runner = PTestRunner(
++                stream=sys.stdout,
++                verbosity=self.options.verbosity).run(tests)
++            self.testsuite_results.append((header, runner))
+         else:
+             runner = TextTestRunner(
+                 stream=sys.stdout,
+diff --git a/salttesting/ptest.py b/salttesting/ptest.py
+new file mode 100644
+index 0000000..4c50f57
+--- /dev/null
++++ b/salttesting/ptest.py
+@@ -0,0 +1,165 @@
++# -*- coding: utf-8 -*-
++
++"""
++Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
++2011, 2012, 2013, 2014, 2015, 2016 Python Software Foundation; All Rights
++Reserved
++
++PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
++--------------------------------------------
++
++1. This LICENSE AGREEMENT is between the Python Software Foundation
++("PSF"), and the Individual or Organization ("Licensee") accessing and
++otherwise using this software ("Python") in source or binary form and
++its associated documentation.
++
++2. Subject to the terms and conditions of this License Agreement, PSF hereby
++grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
++analyze, test, perform and/or display publicly, prepare derivative works,
++distribute, and otherwise use Python alone or in any derivative version,
++provided, however, that PSF's License Agreement and PSF's notice of copyright,
++i.e., "Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
++2011, 2012, 2013, 2014, 2015, 2016 Python Software Foundation; All Rights
++Reserved" are retained in Python alone or in any derivative version prepared by
++Licensee.
++
++3. In the event Licensee prepares a derivative work that is based on
++or incorporates Python or any part thereof, and wants to make
++the derivative work available to others as provided herein, then
++Licensee hereby agrees to include in any such work a brief summary of
++the changes made to Python.
++
++4. PSF is making Python available to Licensee on an "AS IS"
++basis.  PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
++IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND
++DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
++FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
++INFRINGE ANY THIRD PARTY RIGHTS.
++
++5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
++FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
++A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON,
++OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
++
++6. This License Agreement will automatically terminate upon a material
++breach of its terms and conditions.
++
++7. Nothing in this License Agreement shall be deemed to create any
++relationship of agency, partnership, or joint venture between PSF and
++Licensee.  This License Agreement does not grant permission to use PSF
++trademarks or trade name in a trademark sense to endorse or promote
++products or services of Licensee, or any third party.
++
++8. By copying, installing or otherwise using Python, Licensee
++agrees to be bound by the terms and conditions of this License
++Agreement.
++
++Modified Version of Python's TextTestRunner
++"""
++
++import time
++import sys
++import string
++
++import unittest
++TestResult = unittest.TestResult
++
++
++class _WritelnDecorator(object):
++    """Used to decorate file-like objects with a handy 'writeln' method"""
++    def __init__(self, stream):
++        self.stream = stream
++
++    def __getattr__(self, attr):
++        if attr in ('stream', '__getstate__'):
++            raise AttributeError(attr)
++        return getattr(self.stream, attr)
++
++    def writeln(self, arg=None):
++        if arg:
++            self.write(arg)
++        self.write('\n')  # text-mode streams translate to \r\n if needed
++
++
++class _PTestResult(TestResult):
++    """A test result class that can print formatted text results to a stream.
++
++    Used by PTestRunner.
++    """
++    separator1 = '=' * 70
++    separator2 = '-' * 70
++
++    def __init__(self, stream, descriptions, verbosity):
++        TestResult.__init__(self)
++        self.stream = stream
++        self.showAll = verbosity > 1
++        self.dots = verbosity == 1
++        self.descriptions = descriptions
++
++    def getDescription(self, test):
++        return str(test)
++
++    def startTest(self, test):
++        TestResult.startTest(self, test)
++
++    def addSuccess(self, test):
++        TestResult.addSuccess(self, test)
++        if self.showAll:
++            self.stream.writeln("PASS: {0}".format(self.getDescription(test)))
++        elif self.dots:
++            self.stream.write('.')
++
++    def addError(self, test, err):
++        TestResult.addError(self, test, err)
++        if self.showAll:
++            self.stream.writeln("FAIL: ERROR {0}".format(self.getDescription(test)))
++        elif self.dots:
++            self.stream.write('E')
++
++    def addFailure(self, test, err):
++        TestResult.addFailure(self, test, err)
++        if self.showAll:
++            self.stream.writeln("FAIL: {0}".format(self.getDescription(test)))
++        elif self.dots:
++            self.stream.write('F')
++
++    def printErrors(self):
++        if self.dots or self.showAll:
++            self.stream.writeln()
++        self.printErrorList('ERROR', self.errors)
++        self.printErrorList('FAIL', self.failures)
++
++    def printErrorList(self, flavour, errors):
++        for test, err in errors:
++            self.stream.writeln(self.separator1)
++            self.stream.writeln("{0}: {0}".format(flavour, self.getDescription(test)))
++            self.stream.writeln(self.separator2)
++            self.stream.writeln("{0}".format(err))
++
++
++class PTestRunner:
++    """A test runner class that displays results in PTest format.
++
++    """
++    def __init__(self, stream=sys.stderr, descriptions=1, verbosity=1):
++        self.stream = _WritelnDecorator(stream)
++        self.descriptions = descriptions
++        self.verbosity = 2
++
++    def _makeResult(self):
++        return _PTestResult(self.stream, self.descriptions, self.verbosity)
++
++    def run(self, test):
++        "Run the given test case or test suite."
++        result = self._makeResult()
++        startTime = time.time()
++        test(result)
++        stopTime = time.time()
++        timeTaken = float(stopTime - startTime)
++        result.printErrors()
++        run = result.testsRun
++        self.stream.writeln("Ran %d test%s in %.3fs" %
++                            (run, run == 1 and "" or "s", timeTaken))
++        self.stream.writeln(result.separator2)
++        self.stream.writeln()
++        return result
+-- 
+2.13.2
+

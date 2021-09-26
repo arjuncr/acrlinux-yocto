@@ -12,7 +12,6 @@ import bb
 import bb.data
 import bb.parse
 import logging
-import os
 
 class LogRecord():
     def __enter__(self):

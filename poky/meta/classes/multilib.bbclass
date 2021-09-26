@@ -91,12 +91,13 @@ addhandler multilib_virtclass_handler
 multilib_virtclass_handler[eventmask] = "bb.event.RecipePreFinalise"
 
 python __anonymous () {
+    variant = d.getVar("BBEXTENDVARIANT")
+
+    import oe.classextend
+
+    clsextend = oe.classextend.ClassExtender(variant, d)
+
     if bb.data.inherits_class('image', d):
-        variant = d.getVar("BBEXTENDVARIANT")
-        import oe.classextend
-
-        clsextend = oe.classextend.ClassExtender(variant, d)
-
         clsextend.map_depends_variable("PACKAGE_INSTALL")
         clsextend.map_depends_variable("LINGUAS_INSTALL")
         clsextend.map_depends_variable("RDEPENDS")
@@ -105,24 +106,7 @@ python __anonymous () {
         d.setVar("LINGUAS_INSTALL", "")
         # FIXME, we need to map this to something, not delete it!
         d.setVar("PACKAGE_INSTALL_ATTEMPTONLY", "")
-        bb.build.deltask('do_populate_sdk', d)
         bb.build.deltask('do_populate_sdk_ext', d)
-        return
-}
-
-python multilib_virtclass_handler_postkeyexp () {
-    cls = d.getVar("BBEXTENDCURR")
-    variant = d.getVar("BBEXTENDVARIANT")
-    if cls != "multilib" or not variant:
-        return
-
-    variant = d.getVar("BBEXTENDVARIANT")
-
-    import oe.classextend
-
-    clsextend = oe.classextend.ClassExtender(variant, d)
-
-    if bb.data.inherits_class('image', d):
         return
 
     clsextend.map_depends_variable("DEPENDS")
@@ -143,9 +127,6 @@ python multilib_virtclass_handler_postkeyexp () {
 
     reset_alternative_priority(d)
 }
-
-addhandler multilib_virtclass_handler_postkeyexp
-multilib_virtclass_handler_postkeyexp[eventmask] = "bb.event.RecipePostKeyExpansion"
 
 def reset_alternative_priority(d):
     if not bb.data.inherits_class('update-alternatives', d):

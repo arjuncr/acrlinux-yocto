@@ -1,4 +1,4 @@
-Lets install the include header and private header files into
+Lets install the include header and private header files into 
 usr/include/tcl8.6 when version of tcl is 8.6.x
 
 Upstream-Status: Inappropriate [Configuration Specific]
@@ -9,19 +9,18 @@ Fixed the TCL_INCLUDE_SPEC
 
 Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
 Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
-
 ---
- Makefile.in  | 2 +-
- configure    | 4 ++--
- configure.in | 4 ++--
+ Makefile.in  |    2 +-
+ configure    |    4 ++--
+ configure.in |    4 ++--
  3 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/Makefile.in b/Makefile.in
-index 0370491..daa569a 100644
+index 97b983b..dc2a4df 100644
 --- a/Makefile.in
 +++ b/Makefile.in
-@@ -57,7 +57,7 @@ SCRIPT_INSTALL_DIR	= $(INSTALL_ROOT)$(TCL_LIBRARY)
- MODULE_INSTALL_DIR	= $(SCRIPT_INSTALL_DIR)/../tcl8
+@@ -53,7 +53,7 @@ DLL_INSTALL_DIR		= @DLL_INSTALL_DIR@
+ SCRIPT_INSTALL_DIR	= $(INSTALL_ROOT)$(TCL_LIBRARY)
  
  # Directory in which to install the include file tcl.h:
 -INCLUDE_INSTALL_DIR	= $(INSTALL_ROOT)$(includedir)
@@ -30,10 +29,10 @@ index 0370491..daa569a 100644
  # Path to the private tcl header dir:
  PRIVATE_INCLUDE_DIR	= @PRIVATE_INCLUDE_DIR@
 diff --git a/configure b/configure
-index 181b9b3..f4cc225 100755
+index 3e78b49..24b3f92 100755
 --- a/configure
 +++ b/configure
-@@ -10166,7 +10166,7 @@ eval "TCL_LIB_FILE=libtcl${LIB_SUFFIX}"
+@@ -19134,7 +19134,7 @@ eval "TCL_LIB_FILE=libtcl${LIB_SUFFIX}"
  eval "TCL_LIB_FILE=${TCL_LIB_FILE}"
  
  test -z "$TCL_LIBRARY" && TCL_LIBRARY='$(libdir)/tcl$(VERSION)'
@@ -42,7 +41,7 @@ index 181b9b3..f4cc225 100755
  HTML_DIR='$(DISTDIR)/html'
  
  # Note:  in the following variable, it's important to use the absolute
-@@ -10323,7 +10323,7 @@ TCL_BUILD_STUB_LIB_PATH="`pwd`/${TCL_STUB_LIB_FILE}"
+@@ -19293,7 +19293,7 @@ TCL_BUILD_STUB_LIB_PATH="`pwd`/${TCL_STUB_LIB_FILE}"
  TCL_STUB_LIB_PATH="${TCL_STUB_LIB_DIR}/${TCL_STUB_LIB_FILE}"
  
  # Install time header dir can be set via --includedir
@@ -52,10 +51,10 @@ index 181b9b3..f4cc225 100755
  #------------------------------------------------------------------------
  # tclConfig.sh refers to this by a different name
 diff --git a/configure.in b/configure.in
-index 9f96e2b..e323e02 100644
+index 0e28b14..62d9b41 100755
 --- a/configure.in
 +++ b/configure.in
-@@ -773,7 +773,7 @@ eval "TCL_LIB_FILE=libtcl${LIB_SUFFIX}"
+@@ -791,7 +791,7 @@ eval "TCL_LIB_FILE=libtcl${LIB_SUFFIX}"
  eval "TCL_LIB_FILE=${TCL_LIB_FILE}"
  
  test -z "$TCL_LIBRARY" && TCL_LIBRARY='$(libdir)/tcl$(VERSION)'
@@ -64,7 +63,7 @@ index 9f96e2b..e323e02 100644
  HTML_DIR='$(DISTDIR)/html'
  
  # Note:  in the following variable, it's important to use the absolute
-@@ -894,7 +894,7 @@ TCL_BUILD_STUB_LIB_PATH="`pwd`/${TCL_STUB_LIB_FILE}"
+@@ -912,7 +912,7 @@ TCL_BUILD_STUB_LIB_PATH="`pwd`/${TCL_STUB_LIB_FILE}"
  TCL_STUB_LIB_PATH="${TCL_STUB_LIB_DIR}/${TCL_STUB_LIB_FILE}"
  
  # Install time header dir can be set via --includedir
@@ -74,5 +73,5 @@ index 9f96e2b..e323e02 100644
  #------------------------------------------------------------------------
  # tclConfig.sh refers to this by a different name
 -- 
-2.25.1
+1.7.10.4
 

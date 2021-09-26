@@ -1,0 +1,39 @@
+From fcd612f75c2e99a0748bebbf530b730d0019d2bf Mon Sep 17 00:00:00 2001
+From: Xulin Sun <xulin.sun@windriver.com>
+Date: Wed, 24 Apr 2019 22:33:49 -0400
+Subject: [PATCH] glusterfs: configure: automake with subdir-objects & foreign
+ parameters
+
+With subdir-objects & foreign for AM_INIT_AUTOMAKE to avoid
+autoconf execution failed when using automake 1.14 around version.
+
+Upstream-Status: Pending
+
+Signed-off-by: Xulin Sun <xulin.sun@windriver.com>
+[modify the patch for release-6.1]
+Signed-off-by: Hongzhi.Song <hongzhi.song@windriver.com>
+---
+ configure.ac | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 2f341de..b28ac20 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -13,11 +13,11 @@ AC_INIT([glusterfs],
+ AC_SUBST([PACKAGE_RELEASE],
+          [m4_esyscmd([build-aux/pkg-version --release])])
+ 
+-AM_INIT_AUTOMAKE([tar-pax foreign])
++#AM_INIT_AUTOMAKE([tar-pax foreign])
+ 
+ # Removes warnings when using automake 1.14 around (...but option 'subdir-objects' is disabled )
+ #but libglusterfs fails to build with contrib (Then are not set up that way?)
+-#AM_INIT_AUTOMAKE([subdir-objects])
++AM_INIT_AUTOMAKE([subdir-objects foreign])
+ 
+ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
+ 
+-- 
+2.8.1
+

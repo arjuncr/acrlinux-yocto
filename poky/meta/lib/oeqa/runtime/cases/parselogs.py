@@ -88,6 +88,9 @@ qemux86_common = [
     'tsc: HPET/PMTIMER calibration failed',
     "modeset(0): Failed to initialize the DRI2 extension",
     "glamor initialization failed",
+    "blk_update_request: I/O error, dev fd0, sector 0 op 0x0:(READ)",
+    "floppy: error",
+    'failed to IDENTIFY (I/O error, err_mask=0x4)',
 ] + common_errors
 
 ignore_errors = {
@@ -113,11 +116,6 @@ ignore_errors = {
         'Failed to load module "glx"',
         'can\'t handle BAR above 4GB',
         'Cannot reserve Legacy IO',
-        ] + common_errors,
-    'qemuppc64' : [
-        'vio vio: uevent: failed to send synthetic uevent',
-        'synth uevent: /devices/vio: failed to send uevent',
-        'PCI 0000:00 Cannot reserve Legacy IO [io  0x10000-0x10fff]',
         ] + common_errors,
     'qemuarm' : [
         'mmci-pl18x: probe of fpga:05 failed with error -22',

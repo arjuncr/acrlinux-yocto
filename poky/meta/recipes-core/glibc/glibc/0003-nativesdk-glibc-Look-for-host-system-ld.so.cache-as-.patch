@@ -1,4 +1,4 @@
-From 32a4b8ae046fe4bb1b19f61378d079d44deaede7 Mon Sep 17 00:00:00 2001
+From 6987ad183770cb56680ccc4f6ea065a04f31ccb6 Mon Sep 17 00:00:00 2001
 From: Khem Raj <raj.khem@gmail.com>
 Date: Wed, 18 Mar 2015 01:48:24 +0000
 Subject: [PATCH] nativesdk-glibc: Look for host system ld.so.cache as well
@@ -30,10 +30,10 @@ Signed-off-by: Khem Raj <raj.khem@gmail.com>
  1 file changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/elf/dl-load.c b/elf/dl-load.c
-index 9e2089cfaa..ad01674027 100644
+index a6b80f9395..3226f2e531 100644
 --- a/elf/dl-load.c
 +++ b/elf/dl-load.c
-@@ -2175,6 +2175,14 @@ _dl_map_object (struct link_map *loader, const char *name,
+@@ -2073,6 +2073,14 @@ _dl_map_object (struct link_map *loader, const char *name,
              }
          }
  
@@ -41,14 +41,14 @@ index 9e2089cfaa..ad01674027 100644
 +      if (fd == -1
 +	  && ((l = loader ?: GL(dl_ns)[nsid]._ns_loaded) == NULL
 +	   || __builtin_expect (!(l->l_flags_1 & DF_1_NODEFLIB), 1))
-+	 && __rtld_search_dirs.dirs != (void *) -1)
-+	fd = open_path (name, namelen, mode & __RTLD_SECURE, &__rtld_search_dirs,
++	 && rtld_search_dirs.dirs != (void *) -1)
++	fd = open_path (name, namelen, mode & __RTLD_SECURE, &rtld_search_dirs,
 +			&realname, &fb, l, LA_SER_DEFAULT, &found_other_class);
 +      /* Finally try ld.so.cache */
  #ifdef USE_LDCONFIG
        if (fd == -1
  	  && (__glibc_likely ((mode & __RTLD_SECURE) == 0)
-@@ -2233,14 +2241,6 @@ _dl_map_object (struct link_map *loader, const char *name,
+@@ -2131,14 +2139,6 @@ _dl_map_object (struct link_map *loader, const char *name,
  	}
  #endif
  
@@ -56,8 +56,8 @@ index 9e2089cfaa..ad01674027 100644
 -      if (fd == -1
 -	  && ((l = loader ?: GL(dl_ns)[nsid]._ns_loaded) == NULL
 -	      || __glibc_likely (!(l->l_flags_1 & DF_1_NODEFLIB)))
--	  && __rtld_search_dirs.dirs != (void *) -1)
--	fd = open_path (name, namelen, mode, &__rtld_search_dirs,
+-	  && rtld_search_dirs.dirs != (void *) -1)
+-	fd = open_path (name, namelen, mode, &rtld_search_dirs,
 -			&realname, &fb, l, LA_SER_DEFAULT, &found_other_class);
 -
        /* Add another newline when we are tracing the library loading.  */

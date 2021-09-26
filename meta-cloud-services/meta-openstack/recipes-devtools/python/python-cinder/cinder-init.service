@@ -1,0 +1,12 @@
+[Unit]
+Description=Barebones OpenStack cinder initialization
+After=postgresql-init.service keystone-init.service
+
+[Service]
+Type=oneshot
+ExecStart=%SYSCONFDIR%/cinder/cinder-init
+ExecStartPost=/bin/systemctl --no-reload disable cinder-init.service
+RemainAfterExit=No
+
+[Install]
+WantedBy=multi-user.target

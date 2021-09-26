@@ -8,14 +8,11 @@ Based on the svn "Fetch" implementation.
 """
 
 import logging
-import os
 import  bb
 from    bb.fetch2 import FetchMethod
 from    bb.fetch2 import FetchError
 from    bb.fetch2 import MissingParameterError
 from    bb.fetch2 import runfetchcmd
-
-logger = logging.getLogger(__name__)
 
 class Osc(FetchMethod):
     """Class to fetch a module or modules from Opensuse build server
@@ -84,13 +81,13 @@ class Osc(FetchMethod):
         Fetch url
         """
 
-        logger.debug2("Fetch: checking for module directory '" + ud.moddir + "'")
+        logger.debug(2, "Fetch: checking for module directory '" + ud.moddir + "'")
 
         if os.access(os.path.join(d.getVar('OSCDIR'), ud.path, ud.module), os.R_OK):
             oscupdatecmd = self._buildosccommand(ud, d, "update")
             logger.info("Update "+ ud.url)
             # update sources there
-            logger.debug("Running %s", oscupdatecmd)
+            logger.debug(1, "Running %s", oscupdatecmd)
             bb.fetch2.check_network_access(d, oscupdatecmd, ud.url)
             runfetchcmd(oscupdatecmd, d, workdir=ud.moddir)
         else:
@@ -98,7 +95,7 @@ class Osc(FetchMethod):
             logger.info("Fetch " + ud.url)
             # check out sources there
             bb.utils.mkdirhier(ud.pkgdir)
-            logger.debug("Running %s", oscfetchcmd)
+            logger.debug(1, "Running %s", oscfetchcmd)
             bb.fetch2.check_network_access(d, oscfetchcmd, ud.url)
             runfetchcmd(oscfetchcmd, d, workdir=ud.pkgdir)
 

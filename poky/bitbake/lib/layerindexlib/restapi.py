@@ -5,12 +5,8 @@
 
 import logging
 import json
-import os
-
 from urllib.parse import unquote
 from urllib.parse import urlparse
-
-import bb
 
 import layerindexlib
 import layerindexlib.plugin
@@ -82,7 +78,7 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
 
 
         def load_cache(path, index, branches=[]):
-            logger.debug('Loading json file %s' % path)
+            logger.debug(1, 'Loading json file %s' % path)
             with open(path, 'rt', encoding='utf-8') as f:
                 pindex = json.load(f)
 
@@ -102,7 +98,7 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
             if newpBranch:
                 index.add_raw_element('branches', layerindexlib.Branch, newpBranch)
             else:
-                logger.debug('No matching branches (%s) in index file(s)' % branches)
+                logger.debug(1, 'No matching branches (%s) in index file(s)' % branches)
                 # No matching branches.. return nothing...
                 return
 
@@ -120,7 +116,7 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
             load_cache(up.path, index, branches)
             return index
 
-        logger.debug('Loading from dir %s...' % (up.path))
+        logger.debug(1, 'Loading from dir %s...' % (up.path))
         for (dirpath, _, filenames) in os.walk(up.path):
             for filename in filenames:
                 if not filename.endswith('.json'):
@@ -144,7 +140,7 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
         def _get_json_response(apiurl=None, username=None, password=None, retry=True):
             assert apiurl is not None
 
-            logger.debug("fetching %s" % apiurl)
+            logger.debug(1, "fetching %s" % apiurl)
 
             up = urlparse(apiurl)
 
@@ -163,11 +159,11 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
                 parsed = json.loads(res.read().decode('utf-8'))
             except ConnectionResetError:
                 if retry:
-                    logger.debug("%s: Connection reset by peer.  Retrying..." % url)
+                    logger.debug(1, "%s: Connection reset by peer.  Retrying..." % url)
                     parsed = _get_json_response(apiurl=up_stripped.geturl(), username=username, password=password, retry=False)
-                    logger.debug("%s: retry successful.")
+                    logger.debug(1, "%s: retry successful.")
                 else:
-                    raise layerindexlib.LayerIndexFetchError('%s: Connection reset by peer.  Is there a firewall blocking your connection?' % apiurl)
+                    raise LayerIndexFetchError('%s: Connection reset by peer.  Is there a firewall blocking your connection?' % apiurl)
 
             return parsed
 
@@ -207,25 +203,25 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
         if "*" not in branches:
             filter = "?filter=name:%s" % "OR".join(branches)
 
-        logger.debug("Loading %s from %s" % (branches, index.apilinks['branches']))
+        logger.debug(1, "Loading %s from %s" % (branches, index.apilinks['branches']))
 
         # The link won't include username/password, so pull it from the original url
         pindex['branches'] = _get_json_response(index.apilinks['branches'] + filter,
                                                     username=up.username, password=up.password)
         if not pindex['branches']:
-            logger.debug("No valid branches (%s) found at url %s." % (branch, url))
+            logger.debug(1, "No valid branches (%s) found at url %s." % (branch, url))
             return index
         index.add_raw_element("branches", layerindexlib.Branch, pindex['branches'])
 
         # Load all of the layerItems (these can not be easily filtered)
-        logger.debug("Loading %s from %s" % ('layerItems', index.apilinks['layerItems']))
+        logger.debug(1, "Loading %s from %s" % ('layerItems', index.apilinks['layerItems']))
 
 
         # The link won't include username/password, so pull it from the original url
         pindex['layerItems'] = _get_json_response(index.apilinks['layerItems'],
                                                   username=up.username, password=up.password)
         if not pindex['layerItems']:
-            logger.debug("No layers were found at url %s." % (url))
+            logger.debug(1, "No layers were found at url %s." % (url))
             return index
         index.add_raw_element("layerItems", layerindexlib.LayerItem, pindex['layerItems'])
 
@@ -235,13 +231,13 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
         for branch in index.branches:
             filter = "?filter=branch__name:%s" % index.branches[branch].name
 
-            logger.debug("Loading %s from %s" % ('layerBranches', index.apilinks['layerBranches']))
+            logger.debug(1, "Loading %s from %s" % ('layerBranches', index.apilinks['layerBranches']))
 
             # The link won't include username/password, so pull it from the original url
             pindex['layerBranches'] = _get_json_response(index.apilinks['layerBranches'] + filter,
                                                   username=up.username, password=up.password)
             if not pindex['layerBranches']:
-                logger.debug("No valid layer branches (%s) found at url %s." % (branches or "*", url))
+                logger.debug(1, "No valid layer branches (%s) found at url %s." % (branches or "*", url))
                 return index
             index.add_raw_element("layerBranches", layerindexlib.LayerBranch, pindex['layerBranches'])
 
@@ -256,7 +252,7 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
                                    ("distros", layerindexlib.Distro)]:
                 if lName not in load:
                     continue
-                logger.debug("Loading %s from %s" % (lName, index.apilinks[lName]))
+                logger.debug(1, "Loading %s from %s" % (lName, index.apilinks[lName]))
 
                 # The link won't include username/password, so pull it from the original url
                 pindex[lName] = _get_json_response(index.apilinks[lName] + filter,
@@ -283,7 +279,7 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
         if up.scheme != 'file':
             raise layerindexlib.plugin.LayerIndexPluginUrlError(self.type, url)
 
-        logger.debug("Storing to %s..." % up.path)
+        logger.debug(1, "Storing to %s..." % up.path)
 
         try:
             layerbranches = index.layerBranches
@@ -299,12 +295,12 @@ class RestApiPlugin(layerindexlib.plugin.IndexPlugin):
                     if getattr(index, objects)[obj].layerbranch_id == layerbranchid:
                        filtered.append(getattr(index, objects)[obj]._data)
                 except AttributeError:
-                    logger.debug('No obj.layerbranch_id: %s' % objects)
+                    logger.debug(1, 'No obj.layerbranch_id: %s' % objects)
                     # No simple filter method, just include it...
                     try:
                         filtered.append(getattr(index, objects)[obj]._data)
                     except AttributeError:
-                        logger.debug('No obj._data: %s %s' % (objects, type(obj)))
+                        logger.debug(1, 'No obj._data: %s %s' % (objects, type(obj)))
                         filtered.append(obj)
             return filtered
 

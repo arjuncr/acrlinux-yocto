@@ -54,7 +54,6 @@ class DirectPlugin(ImagerPlugin):
         self.native_sysroot = native_sysroot
         self.oe_builddir = oe_builddir
 
-        self.debug = options.debug
         self.outdir = options.outdir
         self.compressor = options.compressor
         self.bmap = options.bmap
@@ -275,9 +274,8 @@ class DirectPlugin(ImagerPlugin):
             if os.path.isfile(path):
                 shutil.move(path, os.path.join(self.outdir, fname))
 
-        # remove work directory when it is not in debugging mode
-        if not self.debug:
-            shutil.rmtree(self.workdir, ignore_errors=True)
+        # remove work directory
+        shutil.rmtree(self.workdir, ignore_errors=True)
 
 # Overhead of the MBR partitioning scheme (just one sector)
 MBR_OVERHEAD = 1

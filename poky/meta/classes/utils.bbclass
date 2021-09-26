@@ -1,3 +1,22 @@
+def machine_paths(d):
+    """List any existing machine specific filespath directories"""
+    machine = d.getVar("MACHINE")
+    filespathpkg = d.getVar("FILESPATHPKG").split(":")
+    for basepath in d.getVar("FILESPATHBASE").split(":"):
+        for pkgpath in filespathpkg:
+            machinepath = os.path.join(basepath, pkgpath, machine)
+            if os.path.isdir(machinepath):
+                yield machinepath
+
+def is_machine_specific(d):
+    """Determine whether the current recipe is machine specific"""
+    machinepaths = set(machine_paths(d))
+    srcuri = d.getVar("SRC_URI").split()
+    for url in srcuri:
+        fetcher = bb.fetch2.Fetch([srcuri], d)
+        if url.startswith("file://"):
+            if any(fetcher.localpath(url).startswith(mp + "/") for mp in machinepaths):
+                return True
 
 oe_soinstall() {
 	# Purpose: Install shared library file and
@@ -214,7 +233,7 @@ create_cmdline_wrapper () {
 #!/bin/bash
 realpath=\`readlink -fn \$0\`
 realdir=\`dirname \$realpath\`
-exec -a \`dirname \$realpath\`/$cmdname \`dirname \$realpath\`/$cmdname.real $cmdoptions "\$@"
+exec -a \$realdir/$cmdname \$realdir/$cmdname.real $cmdoptions "\$@"
 END
 	chmod +x $cmd
 }

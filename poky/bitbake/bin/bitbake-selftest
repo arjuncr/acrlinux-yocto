@@ -18,7 +18,6 @@ except RuntimeError as exc:
     sys.exit(str(exc))
 
 tests = ["bb.tests.codeparser",
-         "bb.tests.color",
          "bb.tests.cooker",
          "bb.tests.cow",
          "bb.tests.data",
@@ -27,7 +26,6 @@ tests = ["bb.tests.codeparser",
          "bb.tests.parse",
          "bb.tests.persist_data",
          "bb.tests.runqueue",
-         "bb.tests.siggen",
          "bb.tests.utils",
          "hashserv.tests",
          "layerindexlib.tests.layerindexobj",

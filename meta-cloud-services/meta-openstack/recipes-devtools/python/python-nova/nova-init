@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Basic nova setup based on:
+# https://docs.openstack.org/nova/pike/install/controller-install-ubuntu.html
+#
+# Prerequisites: keystone must be available and bootstrapped
+#
+
+# Substitutions setup at do_intall()
+DB_USER=%DB_USER%
+NOVA_USER=%NOVA_USER%
+NOVA_GROUP=%NOVA_GROUP%
+CONTROLLER_IP=%CONTROLLER_IP%
+ADMIN_USER=%ADMIN_USER%
+ADMIN_PASSWORD=%ADMIN_PASSWORD%
+ADMIN_ROLE=%ADMIN_ROLE%
+SYSCONFDIR=%SYSCONFDIR%
+PLACEMENT_USER=%PLACEMENT_USER%
+
+#	sudo -u postgres createdb nova
+#	sleep 2
+#	nova-manage db sync
+
+# Create the neutron DB and grant the necessary permissions
+sudo -u postgres psql -c "CREATE DATABASE \"nova-api\"" 2> /dev/null
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"nova-api\" TO ${DB_USER}" 2> /dev/null
+
+sudo -u postgres psql -c "CREATE DATABASE nova" 2> /dev/null
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE nova TO ${DB_USER}" 2> /dev/null
+
+sudo -u postgres psql -c "CREATE DATABASE \"nova-cell0\"" 2> /dev/null
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"nova-cell0\" TO ${DB_USER}" 2> /dev/null
+
+source ${SYSCONFDIR}/keystone/admin-openrc
+
+openstack user create --domain default --password ${ADMIN_PASSWORD} ${NOVA_USER}
+
+# Ensure the 'service' project exists
+openstack project show service > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    openstack project create service --domain default
+fi
+openstack role add --project service --user ${NOVA_USER} ${ADMIN_ROLE}
+
+# Create nova service and service endpoints
+openstack service create --name nova --description "OpenStack Compute" compute
+openstack endpoint create --region RegionOne compute public http://${CONTROLLER_IP}:8774
+openstack endpoint create --region RegionOne compute internal http://${CONTROLLER_IP}:8774
+openstack endpoint create --region RegionOne compute admin http://${CONTROLLER_IP}:8774
+
+# Create placement service, role, and endpoints.
+openstack user create --domain default --password ${ADMIN_PASSWORD} ${PLACEMENT_USER}
+openstack role add --project service --user ${PLACEMENT_USER} ${ADMIN_ROLE}
+openstack service create --name placement --description "Placement API" placement
+openstack endpoint create --region RegionOne placement public http://${CONTROLLER_IP}:8778
+openstack endpoint create --region RegionOne placement internal http://${CONTROLLER_IP}:8778
+openstack endpoint create --region RegionOne placement admin http://${CONTROLLER_IP}:8778
+
+sudo -u ${NOVA_USER} nova-manage api_db sync
+sudo -u ${NOVA_USER} nova-manage cell_v2 map_cell0
+sudo -u ${NOVA_USER} nova-manage cell_v2 create_cell --name=cell1 --verbose
+sudo -u ${NOVA_USER} nova-manage db sync
+
+# Enable and start the nova services
+systemctl enable nova-api
+systemctl enable nova-consoleauth
+systemctl enable nova-scheduler
+systemctl enable nova-conductor
+systemctl enable nova-novncproxy
+
+systemctl start nova-api
+systemctl start nova-consoleauth
+systemctl start nova-scheduler
+systemctl start nova-conductor
+systemctl start nova-novncproxy

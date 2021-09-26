@@ -27,5 +27,4 @@ notes for a given release.
    migration-2.7
    migration-3.0
    migration-3.1
-   migration-3.2
 

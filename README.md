@@ -11,8 +11,6 @@ sudo apt-get install -y git build-essential libsdl1.2-dev texinfo gawk chrpath d
 **Download the source**  
 
 git clone https://github.com/arjuncr/acrlinux-yocto.git      
-              OR     
-git clone https://github.com/arjuncr/acrlinux-yocto.git -b acrlinux-active  
 
 cd acrlinux-yocto   
 
@@ -23,56 +21,49 @@ cd acrlinux-yocto
 ```
 . acrlinux-env
 
-bitbake acrlinux-minimal    
-```  
+bitbake acrlinux 
 
-```
-Loading cache: 100% |                                                                                  | ETA:  --:--:--
-Loaded 0 entries from dependency cache.
-Parsing recipes: 100% |#################################################################################| Time: 0:00:19
-Parsing of 813 .bb files complete (0 cached, 813 parsed). 1437 targets, 40 skipped, 0 masked, 0 errors.
+Parsing recipes: 100% |#################################################################################| Time: 0:00:49
+Parsing of 2468 .bb files complete (0 cached, 2468 parsed). 3643 targets, 116 skipped, 0 masked, 0 errors.
 NOTE: Resolving any missing task queue dependencies
 
 Build Configuration:
-BB_VERSION           = "1.49.2"
+BB_VERSION           = "1.46.0"
 BUILD_SYS            = "x86_64-linux"
 NATIVELSBSTRING      = "ubuntu-20.04"
 TARGET_SYS           = "x86_64-acrlinux-linux"
-MACHINE              = "acrlinux_qemu_x86-64"
+MACHINE              = "acrlinux-x86-64"
 DISTRO               = "acrlinux"
-DISTRO_VERSION       = "1.0.0.0"
+DISTRO_VERSION       = "1.0.0"
 TUNE_FEATURES        = "m64 core2"
 TARGET_FPU           = ""
 meta
 meta-poky
-meta-acrlinux        = "master:153964ca4079907bd6597db12ac569d5003db417"
+meta-yocto-bsp
+meta-acrlinux
+meta-oe
+meta-multimedia
+meta-networking
+meta-python
+meta-perl
+meta-gnome
+meta-xfce
+meta-webserver
+meta-filesystems
+meta-initramfs       = "master:43293b255fb5c69f4168605fa3e4b98862d71e21"
 
+Initialising tasks: 100% |##############################################################################| Time: 0:00:01
+Sstate summary: Wanted 1304 Found 0 Missed 1304 Current 0 (0% match, 0% complete)
 ```
 
-## Run with qemu  
-runqemu acrlinux_qemu_x86-64 nographic       
+## Run with virtual box   
+find the iso file here:   
+build/acrlinux_build/deploy/images/acrlinux-x86-64/acrlinux-distro.iso  
    
 console login:     
 
 user name : root     
 password: no need of password      
 
-```
-[  OK  ] Started D-Bus System Message Bus.
-[  OK  ] Started Getty on tty1.
-[  OK  ] Started Serial Getty on ttyS0.
-[  OK  ] Started Serial Getty on ttyS1.
-[  OK  ] Reached target Login Prompts.
-         Starting User Login Management...
-[  OK  ] Listening on Load/Save RF …itch Status /dev/rfkill Watch.
-[  OK  ] Started User Login Management.
-[  OK  ] Reached target Multi-User System.
-         Starting Update UTMP about System Runlevel Changes...
-[  OK  ] Finished Update UTMP about System Runlevel Changes.
+  ![image](https://user-images.githubusercontent.com/29924920/134802663-ea504ffc-fb68-413b-bdbc-6db65e9cf499.png)
 
-Acrlinux disto 1.0.0 acrlinuxqemux86-64 ttyS0
-
-acrlinuxqemux86-64 login: root
-root@acrlinuxqemux86-64:~#
-
-```

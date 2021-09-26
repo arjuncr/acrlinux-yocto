@@ -4,7 +4,7 @@
 #
 # QB_SYSTEM_NAME: qemu name, e.g., "qemu-system-i386"
 #
-# QB_OPT_APPEND: options to append to qemu, e.g., "-device usb-mouse"
+# QB_OPT_APPEND: options to append to qemu, e.g., "-show-cursor"
 #
 # QB_DEFAULT_KERNEL: default kernel to boot, e.g., "bzImage"
 #
@@ -28,9 +28,6 @@
 #
 # QB_AUDIO_OPT: qemu audio option, e.g., "-soundhw ac97,es1370", used
 #               when QB_AUDIO_DRV is set.
-#
-# QB_RNG: Pass-through for host random number generator, it can speedup boot
-#         in system mode, where system is experiencing entropy starvation
 #
 # QB_KERNEL_ROOT: kernel's root, e.g., /dev/vda
 #
@@ -72,9 +69,6 @@
 #                      Can be used to automatically determine the image from the other variables
 #                      but define things link 'bootindex' when booting from EFI or 'readonly' when using squashfs
 #                      without the need to specify a dedicated qemu configuration
-#
-# QB_GRAPHICS: QEMU video card type (e.g. "-vga std")
-#
 # Usage:
 # IMAGE_CLASSES += "qemuboot"
 # See "runqemu help" for more info
@@ -83,27 +77,24 @@ QB_MEM ?= "-m 256"
 QB_SERIAL_OPT ?= "-serial mon:stdio -serial null"
 QB_DEFAULT_KERNEL ?= "${KERNEL_IMAGETYPE}"
 QB_DEFAULT_FSTYPE ?= "ext4"
-QB_RNG ?= "-object rng-random,filename=/dev/urandom,id=rng0 -device virtio-rng-pci,rng=rng0"
-QB_OPT_APPEND ?= ""
+QB_OPT_APPEND ?= "-show-cursor"
 QB_NETWORK_DEVICE ?= "-device virtio-net-pci,netdev=net0,mac=@MAC@"
 QB_CMDLINE_IP_SLIRP ?= "ip=dhcp"
 QB_CMDLINE_IP_TAP ?= "ip=192.168.7.@CLIENT@::192.168.7.@GATEWAY@:255.255.255.0"
 QB_ROOTFS_EXTRA_OPT ?= ""
-QB_GRAPHICS ?= ""
 
 # This should be kept align with ROOT_VM
 QB_DRIVE_TYPE ?= "/dev/sd"
 
-inherit image-artifact-names
-
 # Create qemuboot.conf
 addtask do_write_qemuboot_conf after do_rootfs before do_image
+IMGDEPLOYDIR ?= "${WORKDIR}/deploy-${PN}-image-complete"
 
 def qemuboot_vars(d):
     build_vars = ['MACHINE', 'TUNE_ARCH', 'DEPLOY_DIR_IMAGE',
                 'KERNEL_IMAGETYPE', 'IMAGE_NAME', 'IMAGE_LINK_NAME',
                 'STAGING_DIR_NATIVE', 'STAGING_BINDIR_NATIVE',
-                'STAGING_DIR_HOST', 'SERIAL_CONSOLES']
+                'STAGING_DIR_HOST']
     return build_vars + [k for k in d.keys() if k.startswith('QB_')]
 
 do_write_qemuboot_conf[vardeps] += "${@' '.join(qemuboot_vars(d))}"

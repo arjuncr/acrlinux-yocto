@@ -14,9 +14,9 @@ SRC_URI = "git://github.com/mirror/x264;branch=stable \
            "
 UPSTREAM_CHECK_COMMITS = "1"
 
-SRCREV = "544c61f082194728d0391fb280a6e138ba320a96"
+SRCREV = "1771b556ee45207f8711744ccbd5d42a3949b14c"
 
-PV = "r3039+git${SRCPV}"
+PV = "r2991+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 

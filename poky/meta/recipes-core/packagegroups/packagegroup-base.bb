@@ -8,6 +8,7 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 inherit packagegroup
 
+PROVIDES = "${PACKAGES}"
 PACKAGES = ' \
             packagegroup-base \
             packagegroup-base-extended \
@@ -109,16 +110,16 @@ python __anonymous () {
     machine_features= set(d.getVar("MACHINE_FEATURES").split())
 
     if "bluetooth" in distro_features and not "bluetooth" in machine_features and ("pcmcia" in machine_features or "pci" in machine_features or "usbhost" in machine_features):
-        d.setVar("ADD_BT", "${MLPREFIX}packagegroup-base-bluetooth")
+        d.setVar("ADD_BT", "packagegroup-base-bluetooth")
 
     if "wifi" in distro_features and not "wifi" in machine_features and ("pcmcia" in machine_features or "pci" in machine_features or "usbhost" in machine_features):
-        d.setVar("ADD_WIFI", "${MLPREFIX}packagegroup-base-wifi")
+        d.setVar("ADD_WIFI", "packagegroup-base-wifi")
 
     if "3g" in distro_features and not "3g" in machine_features and ("pcmcia" in machine_features or "pci" in machine_features or "usbhost" in machine_features):
-        d.setVar("ADD_3G", "${MLPREFIX}packagegroup-base-3g")
+        d.setVar("ADD_3G", "packagegroup-base-3g")
 
     if "nfc" in distro_features and not "nfc" in machine_features and ("usbhost" in machine_features):
-        d.setVar("ADD_NFC", "${MLPREFIX}packagegroup-base-nfc")
+        d.setVar("ADD_NFC", "packagegroup-base-nfc")
 }
 
 #
@@ -156,12 +157,10 @@ RDEPENDS_packagegroup-base-apm = "\
 
 SUMMARY_packagegroup-base-ext2 = "ext2 filesystem support"
 RDEPENDS_packagegroup-base-ext2 = "\
+    hdparm \
+    e2fsprogs \
     e2fsprogs-e2fsck \
     e2fsprogs-mke2fs"
-
-RRECOMMENDS_packagegroup-base-ext2 = "\
-    hdparm \
-    e2fsprogs"
 
 SUMMARY_packagegroup-base-vfat = "FAT filesystem support"
 RRECOMMENDS_packagegroup-base-vfat = "\
@@ -174,7 +173,7 @@ RRECOMMENDS_packagegroup-base-vfat = "\
 SUMMARY_packagegroup-base-alsa = "ALSA sound support"
 RDEPENDS_packagegroup-base-alsa = "\
     alsa-utils-alsactl \
-    alsa-utils-amixer \
+    alsa-utils-alsamixer \
     ${VIRTUAL-RUNTIME_alsa-state}"
 
 RRECOMMENDS_packagegroup-base-alsa = "\

@@ -47,6 +47,7 @@ RUNTIMETARGET = "${RUNTIMELIBSSP} libstdc++-v3 libgomp libatomic ${RUNTIMELIBITM
 RUNTIMETARGET_libc-newlib = "libstdc++-v3"
 
 # libiberty
+# libmudflap
 # libgfortran needs separate recipe due to libquadmath dependency
 
 SLIB = "${TMPDIR}/work-shared/gcc-${PV}-${PR}/gcc-${PV}"
@@ -138,10 +139,6 @@ do_install_append_class-target () {
 		ln -s ../${TARGET_SYS}/ext ${D}${includedir}/c++/${BINV}/${TARGET_ARCH}${TARGET_VENDOR_MULTILIB_ORIGINAL}-${TARGET_OS}/ext
 	fi
 
-	if [ "${TARGET_ARCH}" == "x86_64" -a "${MULTILIB_VARIANTS}" != "" ];then
-		ln -sf ../${X86ARCH32}${TARGET_VENDOR}-${TARGET_OS} ${D}${includedir}/c++/${BINV}/${TARGET_ARCH}${TARGET_VENDOR}-${TARGET_OS}/32
-	fi
-
 	if [ "${TCLIBC}" != "glibc" ]; then
 		case "${TARGET_OS}" in
 			"linux-musl" | "linux-*spe") extra_target_os="linux";;
@@ -170,6 +167,9 @@ PACKAGES = "\
     libssp \
     libssp-dev \
     libssp-staticdev \
+    libmudflap \
+    libmudflap-dev \
+    libmudflap-staticdev \
     libquadmath \
     libquadmath-dev \
     libquadmath-staticdev \
@@ -242,13 +242,23 @@ SUMMARY_libquadmath-dev = "GNU quad-precision math library - development files"
 FILES_libquadmath-staticdev = "${libdir}/libquadmath.a"
 SUMMARY_libquadmath-staticdev = "GNU quad-precision math library - static development files"
 
+# NOTE: mudflap has been removed as of gcc 4.9 and has been superseded by the address sanitiser
+FILES_libmudflap = "${libdir}/libmudflap*.so.*"
+SUMMARY_libmudflap = "Pointer debugging library for gcc"
+FILES_libmudflap-dev = "\
+    ${libdir}/libmudflap*.so \
+    ${libdir}/libmudflap.la \
+"
+SUMMARY_libmudflap-dev = "Pointer debugging library for gcc - development files"
+FILES_libmudflap-staticdev = "${libdir}/libmudflap.a"
+SUMMARY_libmudflap-staticdev = "Pointer debugging library for gcc - static development files"
+
 FILES_libgomp = "${libdir}/libgomp*${SOLIBS}"
 SUMMARY_libgomp = "GNU OpenMP parallel programming library"
 FILES_libgomp-dev = "\
     ${libdir}/libgomp*${SOLIBSDEV} \
     ${libdir}/libgomp*.la \
     ${libdir}/libgomp.spec \
-    ${libdir}/${TARGET_SYS}/${BINV}/include/acc_prof.h \
     ${libdir}/${TARGET_SYS}/${BINV}/include/omp.h \
     ${libdir}/${TARGET_SYS}/${BINV}/include/openacc.h \
 "

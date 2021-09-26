@@ -1,0 +1,30 @@
+From 943a321104a5b2c4ac25bdb2ae81b5b208e3973c Mon Sep 17 00:00:00 2001
+From: Lei Maohui <leimaohui@cn.fujitsu.com>
+Date: Tue, 18 Aug 2015 10:29:35 +0900
+Subject: [PATCH] fix build error of cross build
+
+The error likes as following
+| configure: error: cannot run C compiled programs.
+| If you meant to cross compile, use `--host'.
+
+Signed-off-by: Lei Maohui <leimaohui@cn.fujitsu.com>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index c5d9700..1f31e43 100644
+--- a/Makefile
++++ b/Makefile
+@@ -42,7 +42,7 @@ user: utils/open-isns/Makefile
+ 	@echo "Read README file for detailed information."
+ 
+ utils/open-isns/Makefile: utils/open-isns/configure utils/open-isns/Makefile.in
+-	cd utils/open-isns; ./configure CFLAGS="$(OPTFLAGS)" --with-security=no
++	cd utils/open-isns; ./configure CFLAGS="$(OPTFLAGS)" --with-security=no ${CONFIGURE_ARGS}
+ 
+ kernel: force
+ 	$(MAKE) -C kernel
+-- 
+1.8.4.2
+

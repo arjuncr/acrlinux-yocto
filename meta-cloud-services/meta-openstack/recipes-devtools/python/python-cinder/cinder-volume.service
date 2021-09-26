@@ -1,0 +1,20 @@
+[Unit]
+Description=OpenStack Cinder Volume
+After=postgresql.service keystone.service rabbitmq-server.service ntp.service
+
+[Service]
+User=%USER%
+Group=%GROUP%
+Type=simple
+WorkingDirectory=%LOCALSTATEDIR%/lib/cinder
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p %LOCALSTATEDIR%/lock/cinder %LOCALSTATEDIR%/log/cinder %LOCALSTATEDIR%/lib/cinder
+ExecStartPre=/bin/chown cinder:cinder %LOCALSTATEDIR%/lock/cinder %LOCALSTATEDIR%/lib/cinder
+ExecStartPre=/bin/chown cinder:adm %LOCALSTATEDIR%/log/cinder
+ExecStart=/usr/bin/cinder-volume --config-file=%SYSCONFDIR%/cinder/cinder.conf
+Restart=on-failure
+LimitNOFILE=65535
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

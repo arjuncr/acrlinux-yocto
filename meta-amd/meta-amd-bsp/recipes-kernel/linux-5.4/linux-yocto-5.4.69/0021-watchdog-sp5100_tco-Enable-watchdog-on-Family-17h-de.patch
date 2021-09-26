@@ -1,0 +1,59 @@
+From 40d0f2c1144301baa2f6080da48e2fc42113c3d0 Mon Sep 17 00:00:00 2001
+From: Guenter Roeck <linux@roeck-us.net>
+Date: Thu, 10 Sep 2020 09:31:09 -0700
+Subject: [PATCH 21/21] watchdog: sp5100_tco: Enable watchdog on Family 17h
+ devices if disabled
+
+On Family 17h (Ryzen) devices, the WatchdogTmrEn bit of PmDecodeEn not only
+enables watchdog memory decoding at 0xfeb00000, it also enables the
+watchdog hardware itself. Use this information to enable the watchdog if
+it is not already enabled.
+
+Cc: Jan Kiszka <jan.kiszka@siemens.com>
+Tested-by: Jan Kiszka <jan.kiszka@siemens.com>
+Link: https://lore.kernel.org/r/20200910163109.235136-2-linux@roeck-us.net
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Wim Van Sebroeck <wim@linux-watchdog.org>
+---
+ drivers/watchdog/sp5100_tco.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/drivers/watchdog/sp5100_tco.c b/drivers/watchdog/sp5100_tco.c
+index 93bd302ae7c5..b9d234f2959a 100644
+--- a/drivers/watchdog/sp5100_tco.c
++++ b/drivers/watchdog/sp5100_tco.c
+@@ -17,6 +17,12 @@
+  *	    AMD Publication 51192 "AMD Bolton FCH Register Reference Guide"
+  *	    AMD Publication 52740 "BIOS and Kernel Developer’s Guide (BKDG)
+  *				for AMD Family 16h Models 30h-3Fh Processors"
++ *	    AMD Publication 55570-B1-PUB "Processor Programming Reference (PPR)
++ *				for AMD Family 17h Model 18h, Revision B1
++ *				Processors (PUB)
++ *	    AMD Publication 55772-A1-PUB "Processor Programming Reference (PPR)
++ *				for AMD Family 17h Model 20h, Revision A1
++ *				Processors (PUB)
+  */
+ 
+ /*
+@@ -241,6 +247,18 @@ static int sp5100_tco_setupdevice(struct device *dev,
+ 		break;
+ 	case efch:
+ 		dev_name = SB800_DEVNAME;
++		/*
++		 * On Family 17h devices, the EFCH_PM_DECODEEN_WDT_TMREN bit of
++		 * EFCH_PM_DECODEEN not only enables the EFCH_PM_WDT_ADDR memory
++		 * region, it also enables the watchdog itself.
++		 */
++		if (boot_cpu_data.x86 == 0x17) {
++			val = sp5100_tco_read_pm_reg8(EFCH_PM_DECODEEN);
++			if (!(val & EFCH_PM_DECODEEN_WDT_TMREN)) {
++				sp5100_tco_update_pm_reg8(EFCH_PM_DECODEEN, 0xff,
++							  EFCH_PM_DECODEEN_WDT_TMREN);
++			}
++		}
+ 		val = sp5100_tco_read_pm_reg8(EFCH_PM_DECODEEN);
+ 		if (val & EFCH_PM_DECODEEN_WDT_TMREN)
+ 			mmio_addr = EFCH_PM_WDT_ADDR;
+-- 
+2.17.1
+

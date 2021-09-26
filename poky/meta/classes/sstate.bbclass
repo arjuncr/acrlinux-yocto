@@ -123,8 +123,6 @@ SSTATE_HASHEQUIV_REPORT_TASKDATA[doc] = "Report additional useful data to the \
 python () {
     if bb.data.inherits_class('native', d):
         d.setVar('SSTATE_PKGARCH', d.getVar('BUILD_ARCH', False))
-        if d.getVar("PN") == "pseudo-native":
-            d.appendVar('SSTATE_PKGARCH', '_${ORIGNATIVELSBSTRING}')
     elif bb.data.inherits_class('crosssdk', d):
         d.setVar('SSTATE_PKGARCH', d.expand("${BUILD_ARCH}_${SDK_ARCH}_${SDK_OS}"))
     elif bb.data.inherits_class('cross', d):
@@ -319,6 +317,8 @@ def sstate_install(ss, d):
     if os.path.exists(i):
         with open(i, "r") as f:
             manifests = f.readlines()
+    # We append new entries, we don't remove older entries which may have the same
+    # manifest name but different versions from stamp/workdir. See below.
     if filedata not in manifests:
         with open(i, "a+") as f:
             f.write(filedata)
@@ -481,7 +481,7 @@ def sstate_clean_cachefiles(d):
         ss = sstate_state_fromvars(ld, task)
         sstate_clean_cachefile(ss, ld)
 
-def sstate_clean_manifest(manifest, d, prefix=None):
+def sstate_clean_manifest(manifest, d, canrace=False, prefix=None):
     import oe.path
 
     mfile = open(manifest)
@@ -499,7 +499,9 @@ def sstate_clean_manifest(manifest, d, prefix=None):
             if entry.endswith("/"):
                 if os.path.islink(entry[:-1]):
                     os.remove(entry[:-1])
-                elif os.path.exists(entry) and len(os.listdir(entry)) == 0:
+                elif os.path.exists(entry) and len(os.listdir(entry)) == 0 and not canrace:
+                    # Removing directories whilst builds are in progress exposes a race. Only
+                    # do it in contexts where it is safe to do so.
                     os.rmdir(entry[:-1])
             else:
                 os.remove(entry)
@@ -537,7 +539,7 @@ def sstate_clean(ss, d):
         for lock in ss['lockfiles']:
             locks.append(bb.utils.lockfile(lock))
 
-        sstate_clean_manifest(manifest, d)
+        sstate_clean_manifest(manifest, d, canrace=True)
 
         for lock in locks:
             bb.utils.unlockfile(lock)
@@ -701,8 +703,15 @@ def sstate_package(ss, d):
             os.utime(siginfo, None)
         except PermissionError:
             pass
+        except OSError as e:
+            # Handle read-only file systems gracefully
+            import errno
+            if e.errno != errno.EROFS:
+                raise e
 
     return
+
+sstate_package[vardepsexclude] += "SSTATE_SIG_KEY"
 
 def pstaging_fetch(sstatefetch, d):
     import bb.fetch2
@@ -791,7 +800,7 @@ sstate_create_package () {
 		return
 	fi
 
-	mkdir --mode=0775 -p `dirname ${SSTATE_PKG}`
+	mkdir -p `dirname ${SSTATE_PKG}`
 	TFILE=`mktemp ${SSTATE_PKG}.XXXXXXXX`
 
 	# Use pigz if available
@@ -862,8 +871,6 @@ BB_HASHCHECK_FUNCTION = "sstate_checkhashes"
 
 def sstate_checkhashes(sq_data, d, siginfo=False, currentcount=0, summary=True, **kwargs):
     found = set()
-    foundLocal = set()
-    foundNet = set()
     missed = set()
 
     def gethash(task):
@@ -896,7 +903,6 @@ def sstate_checkhashes(sq_data, d, siginfo=False, currentcount=0, summary=True, 
         if os.path.exists(sstatefile):
             bb.debug(2, "SState: Found valid sstate file %s" % sstatefile)
             found.add(tid)
-            foundLocal.add(tid)
             continue
         else:
             missed.add(tid)
@@ -942,7 +948,6 @@ def sstate_checkhashes(sq_data, d, siginfo=False, currentcount=0, summary=True, 
                 fetcher.checkstatus()
                 bb.debug(2, "SState: Successful fetch test for %s" % srcuri)
                 found.add(tid)
-                foundNet.add(tid)
                 if tid in missed:
                     missed.remove(tid)
             except:
@@ -1004,12 +1009,13 @@ def sstate_checkhashes(sq_data, d, siginfo=False, currentcount=0, summary=True, 
         match = 0
         if total:
             match = len(found) / total * 100
-        bb.plain("Sstate summary: Wanted %d Local %d Network %d Missed %d Current %d (%d%% match, %d%% complete)" % (total, len(foundLocal), len(foundNet),len(missed), currentcount, match, complete))
+        bb.plain("Sstate summary: Wanted %d Found %d Missed %d Current %d (%d%% match, %d%% complete)" % (total, len(found), len(missed), currentcount, match, complete))
 
     if hasattr(bb.parse.siggen, "checkhashes"):
         bb.parse.siggen.checkhashes(sq_data, missed, found, d)
 
     return found
+setscene_depvalid[vardepsexclude] = "SSTATE_EXCLUDEDEPS_SYSROOT"
 
 BB_SETSCENE_DEPVALID = "setscene_depvalid"
 
@@ -1141,23 +1147,24 @@ python sstate_eventhandler() {
                 os.utime(siginfo, None)
             except PermissionError:
                 pass
+            except OSError as e:
+                # Handle read-only file systems gracefully
+                import errno
+                if e.errno != errno.EROFS:
+                    raise e
 
 }
 
 SSTATE_PRUNE_OBSOLETEWORKDIR ?= "1"
 
-#
-# Event handler which removes manifests and stamps file for recipes which are no
-# longer 'reachable' in a build where they once were. 'Reachable' refers to
-# whether a recipe is parsed so recipes in a layer which was removed would no
-# longer be reachable. Switching between systemd and sysvinit where recipes
-# became skipped would be another example.
-#
+# Event handler which removes manifests and stamps file for
+# recipes which are no longer reachable in a build where they
+# once were.
 # Also optionally removes the workdir of those tasks/recipes
 #
-addhandler sstate_eventhandler_reachablestamps
-sstate_eventhandler_reachablestamps[eventmask] = "bb.event.ReachableStamps"
-python sstate_eventhandler_reachablestamps() {
+addhandler sstate_eventhandler2
+sstate_eventhandler2[eventmask] = "bb.event.ReachableStamps"
+python sstate_eventhandler2() {
     import glob
     d = e.data
     stamps = e.stamps.values()
@@ -1183,11 +1190,21 @@ python sstate_eventhandler_reachablestamps() {
         i = d.expand("${SSTATE_MANIFESTS}/index-" + a)
         if not os.path.exists(i):
             continue
+        manseen = set()
+        ignore = []
         with open(i, "r") as f:
             lines = f.readlines()
-            for l in lines:
+            for l in reversed(lines):
                 try:
                     (stamp, manifest, workdir) = l.split()
+                    # The index may have multiple entries for the same manifest as the code above only appends
+                    # new entries and there may be an entry with matching manifest but differing version in stamp/workdir.
+                    # The last entry in the list is the valid one, any earlier entries with matching manifests
+                    # should be ignored.
+                    if manifest in manseen:
+                        ignore.append(l)
+                        continue
+                    manseen.add(manifest)
                     if stamp not in stamps and stamp not in preservestamps and stamp in machineindex:
                         toremove.append(l)
                         if stamp not in seen:
@@ -1218,6 +1235,8 @@ python sstate_eventhandler_reachablestamps() {
 
         with open(i, "w") as f:
             for l in lines:
+                if l in ignore:
+                    continue
                 f.write(l)
     machineindex |= set(stamps)
     with open(mi, "w") as f:
@@ -1226,60 +1245,4 @@ python sstate_eventhandler_reachablestamps() {
 
     if preservestamps:
         os.remove(preservestampfile)
-}
-
-
-#
-# Bitbake can generate an event showing which setscene tasks are 'stale',
-# i.e. which ones will be rerun. These are ones where a stamp file is present but
-# it is stable (e.g. taskhash doesn't match). With that list we can go through
-# the manifests for matching tasks and "uninstall" those manifests now. We do
-# this now rather than mid build since the distribution of files between sstate
-# objects may have changed, new tasks may run first and if those new tasks overlap
-# with the stale tasks, we'd see overlapping files messages and failures. Thankfully
-# removing these files is fast.
-#
-addhandler sstate_eventhandler_stalesstate
-sstate_eventhandler_stalesstate[eventmask] = "bb.event.StaleSetSceneTasks"
-python sstate_eventhandler_stalesstate() {
-    d = e.data
-    tasks = e.tasks
-
-    bb.utils.mkdirhier(d.expand("${SSTATE_MANIFESTS}"))
-
-    for a in list(set(d.getVar("SSTATE_ARCHS").split())):
-        toremove = []
-        i = d.expand("${SSTATE_MANIFESTS}/index-" + a)
-        if not os.path.exists(i):
-            continue
-        with open(i, "r") as f:
-            lines = f.readlines()
-            for l in lines:
-                try:
-                    (stamp, manifest, workdir) = l.split()
-                    for tid in tasks:
-                        for s in tasks[tid]:
-                            if s.startswith(stamp):
-                                taskname = bb.runqueue.taskname_from_tid(tid)[3:]
-                                manname = manifest + "." + taskname
-                                if os.path.exists(manname):
-                                    bb.debug(2, "Sstate for %s is stale, removing related manifest %s" % (tid, manname))
-                                    toremove.append((manname, tid, tasks[tid]))
-                                    break
-                except ValueError:
-                    bb.fatal("Invalid line '%s' in sstate manifest '%s'" % (l, i))
-
-        if toremove:
-            msg = "Removing %d stale sstate objects for arch %s" % (len(toremove), a)
-            bb.event.fire(bb.event.ProcessStarted(msg, len(toremove)), d)
-
-            removed = 0
-            for (manname, tid, stamps) in toremove:
-                sstate_clean_manifest(manname, d)
-                for stamp in stamps:
-                    bb.utils.remove(stamp)
-                removed = removed + 1
-                bb.event.fire(bb.event.ProcessProgress(msg, removed), d)
-
-            bb.event.fire(bb.event.ProcessFinished(msg), d)
 }

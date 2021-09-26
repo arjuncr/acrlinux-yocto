@@ -1,0 +1,12 @@
+[Unit]
+Description=Gluster File System service for volume management
+After=syslog.target network.target
+
+[Service]
+Type=forking
+PIDFile=@localstatedir@/run/glusterd.pid
+ExecStartPre=@base_bindir@/mkdir -p @localstatedir@/log/glusterfs
+ExecStart=@SBINDIR@/glusterd -p @localstatedir@/run/glusterd.pid
+
+[Install]
+WantedBy=multi-user.target
