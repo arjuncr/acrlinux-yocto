@@ -1,0 +1,213 @@
+From 8c969157c0ac60d23ff2102ca0b5a893cedf2fad Mon Sep 17 00:00:00 2001
+From: Adrian Calianu <adrian.calianu@enea.com>
+Date: Mon, 10 Aug 2015 17:53:12 +0200
+Subject: [PATCH] Subject: [PATCH] pci-host-generic
+
+From: Suravee Suthikulpanit <Suravee.Suthikulpanit@amd.com>
+Date: Tue, 20 Jan 2015 19:30:58 -0600
+
+Upstream-Status: Pending
+
+Ported from 3.19 kernel, patch provided by AMD.
+
+Signed-off-by: Adrian Calianu <adrian.calianu@enea.com>
+---
+ drivers/pci/host/Kconfig            |  2 +-
+ drivers/pci/host/pci-host-generic.c | 97 ++++++++++++++++++++++++++++++++-----
+ 2 files changed, 87 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/pci/host/Kconfig b/drivers/pci/host/Kconfig
+index 1dfb567..aeca260 100644
+--- a/drivers/pci/host/Kconfig
++++ b/drivers/pci/host/Kconfig
+@@ -53,7 +53,7 @@ config PCI_RCAR_GEN2_PCIE
+ 
+ config PCI_HOST_GENERIC
+ 	bool "Generic PCI host controller"
+-	depends on ARM && OF
++    depends on (ARM || ARM64) && OF
+ 	help
+ 	  Say Y here if you want to support a simple generic PCI host
+ 	  controller, such as the one emulated by kvmtool.
+diff --git a/drivers/pci/host/pci-host-generic.c b/drivers/pci/host/pci-host-generic.c
+index ba46e58..01931e8 100644
+--- a/drivers/pci/host/pci-host-generic.c
++++ b/drivers/pci/host/pci-host-generic.c
+@@ -44,12 +44,21 @@ struct gen_pci {
+ 	struct list_head			resources;
+ };
+ 
++#ifdef CONFIG_ARM64
++#define bus_to_gen_pci(b) \
++   ((struct gen_pci *)b->sysdata)
++#else
++#define bus_to_gen_pci(b) \
++      ((struct gen_pci *) \
++      (((struct pci_sys_data *) \
++      (bus->sysdata))->private_data))
++#endif
++
+ static void __iomem *gen_pci_map_cfg_bus_cam(struct pci_bus *bus,
+ 					     unsigned int devfn,
+ 					     int where)
+ {
+-	struct pci_sys_data *sys = bus->sysdata;
+-	struct gen_pci *pci = sys->private_data;
++    struct gen_pci *pci = bus_to_gen_pci(bus);
+ 	resource_size_t idx = bus->number - pci->cfg.bus_range->start;
+ 
+ 	return pci->cfg.win[idx] + ((devfn << 8) | where);
+@@ -64,8 +73,7 @@ static void __iomem *gen_pci_map_cfg_bus_ecam(struct pci_bus *bus,
+ 					      unsigned int devfn,
+ 					      int where)
+ {
+-	struct pci_sys_data *sys = bus->sysdata;
+-	struct gen_pci *pci = sys->private_data;
++    struct gen_pci *pci = bus_to_gen_pci(bus);
+ 	resource_size_t idx = bus->number - pci->cfg.bus_range->start;
+ 
+ 	return pci->cfg.win[idx] + ((devfn << 12) | where);
+@@ -94,6 +102,13 @@ MODULE_DEVICE_TABLE(of, gen_pci_of_match);
+ 
+ static void gen_pci_release_of_pci_ranges(struct gen_pci *pci)
+ {
++    struct pci_host_bridge_window *win;
++
++    list_for_each_entry(win, &pci->resources, list)
++        /* Release only requested resources */
++        if (win->res->parent)
++            release_resource(win->res);
++
+ 	pci_free_resource_list(&pci->resources);
+ }
+ 
+@@ -117,11 +132,6 @@ static int gen_pci_parse_request_of_pci_ranges(struct gen_pci *pci)
+ 		case IORESOURCE_IO:
+ 			parent = &ioport_resource;
+ 			err = pci_remap_iospace(res, iobase);
+-			if (err) {
+-				dev_warn(dev, "error %d: failed to map resource %pR\n",
+-					 err, res);
+-				continue;
+-			}
+ 			break;
+ 		case IORESOURCE_MEM:
+ 			parent = &iomem_resource;
+@@ -129,11 +139,20 @@ static int gen_pci_parse_request_of_pci_ranges(struct gen_pci *pci)
+ 			break;
+ 		case IORESOURCE_BUS:
+ 			pci->cfg.bus_range = res;
++            continue;
+ 		default:
++            err = -EINVAL;
+ 			continue;
+ 		}
+ 
+-		err = devm_request_resource(dev, parent, res);
++        if (err) {
++            dev_warn(dev,
++                 "error %d: failed to add resource %pR\n", err,
++                 res);
++            continue;
++        }
++
++        err = request_resource(parent, res);
+ 		if (err)
+ 			goto out_release_res;
+ 	}
+@@ -198,12 +217,51 @@ static int gen_pci_parse_map_cfg_windows(struct gen_pci *pci)
+ 	return 0;
+ }
+ 
++#ifndef CONFIG_ARM64
+ static int gen_pci_setup(int nr, struct pci_sys_data *sys)
+ {
+ 	struct gen_pci *pci = sys->private_data;
+ 	list_splice_init(&pci->resources, &sys->resources);
+ 	return 1;
+ }
++#endif
++
++#ifdef CONFIG_ARM64
++struct pci_bus *gen_scan_root_bus(struct device *parent, int bus,
++                      struct pci_ops *ops, void *sysdata,
++                      struct list_head *resources)
++{
++   struct pci_host_bridge_window *window;
++   bool found = false;
++   struct pci_bus *b;
++   int max;
++
++   list_for_each_entry(window, resources, list)
++       if (window->res->flags & IORESOURCE_BUS) {
++           found = true;
++           break;
++       }
++
++   b = pci_create_root_bus(parent, bus, ops, sysdata, resources);
++   if (!b)
++       return NULL;
++
++   if (!found) {
++       dev_info(&b->dev,
++        "No busn resource found for root bus, will use [bus %02x-ff]\n",
++           bus);
++       pci_bus_insert_busn_res(b, bus, 255);
++   }
++
++   max = pci_scan_child_bus(b);
++
++   if (!found)
++       pci_bus_update_busn_res_end(b, max);
++
++   pci_bus_add_devices(b);
++   return b;
++}
++#endif
+ 
+ static int gen_pci_probe(struct platform_device *pdev)
+ {
+@@ -214,6 +272,7 @@ static int gen_pci_probe(struct platform_device *pdev)
+ 	struct device *dev = &pdev->dev;
+ 	struct device_node *np = dev->of_node;
+ 	struct gen_pci *pci = devm_kzalloc(dev, sizeof(*pci), GFP_KERNEL);
++#ifndef CONFIG_ARM64
+ 	struct hw_pci hw = {
+ 		.nr_controllers	= 1,
+ 		.private_data	= (void **)&pci,
+@@ -221,6 +280,9 @@ static int gen_pci_probe(struct platform_device *pdev)
+ 		.map_irq	= of_irq_parse_and_map_pci,
+ 		.ops		= &gen_pci_ops,
+ 	};
++#else
++   struct pci_bus *bus;
++#endif
+ 
+ 	if (!pci)
+ 		return -ENOMEM;
+@@ -257,8 +319,21 @@ static int gen_pci_probe(struct platform_device *pdev)
+ 		gen_pci_release_of_pci_ranges(pci);
+ 		return err;
+ 	}
+-
++#ifdef CONFIG_ARM64
++   bus = gen_scan_root_bus(&pdev->dev, pci->cfg.bus_range->start,
++               &gen_pci_ops, pci, &pci->resources);
++   if (!bus) {
++       dev_err(&pdev->dev, "failed to enable PCIe ports\n");
++       return -ENODEV;
++   }
++
++   if (!pci_has_flag(PCI_PROBE_ONLY)) {
++       pci_bus_size_bridges(bus);
++       pci_bus_assign_resources(bus);
++   }
++#else
+ 	pci_common_init_dev(dev, &hw);
++#endif /* CONFIG_ARM64 */
+ 	return 0;
+ }
+ 
+-- 
+1.9.1
+

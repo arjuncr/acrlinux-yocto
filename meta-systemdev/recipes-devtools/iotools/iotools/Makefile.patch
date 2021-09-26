@@ -1,0 +1,24 @@
+From: Reinette Chatre <reinette.chatre@intel.com>
+Date: Tue, 30 Aug 12:12:50 PDT 2016
+Subject: [PATCH] Makefile: only modify CC if unset
+
+When cross compiling bitbake sets the value of CC to correct compiler.
+
+Signed-off-by: Reinette Chatre <reinette.chatre@intel.com>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ -17,7 +17,7 @@
+ VER_MAJOR = 1
+ VER_MINOR = 5
+ 
+-CC=$(CROSS_COMPILE)gcc
++CC ?= $(CROSS_COMPILE)gcc
+ 
+ # build options
+ DEBUG ?= 1
+-- 

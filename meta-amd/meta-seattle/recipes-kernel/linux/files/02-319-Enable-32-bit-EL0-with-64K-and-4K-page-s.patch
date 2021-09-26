@@ -1,0 +1,49 @@
+From ab3d099133f84d59e02a572801659cf8b1145f72 Mon Sep 17 00:00:00 2001
+From: Adrian Calianu <adrian.calianu@enea.com>
+Date: Thu, 19 Feb 2015 09:24:22 +0100
+Subject: [PATCH 1/1] Seattle: Enable 32-bit EL0 with 64K and 4K page sizes
+
+Seattle is able to switch to aarch32 EL0 only with following setup:
+- Page Size 64K - 42bit VA
+- Page Size 4K  - 48bit VA
+
+Upstream-Status: Pending
+
+Signed-off-by: Adrian Calianu <adrian.calianu@enea.com>
+---
+ arch/arm64/Kconfig | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index d35a06c..68b4859 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -338,6 +338,7 @@ endchoice
+ choice
+ 	prompt "Virtual address space size"
+ 	default ARM64_VA_BITS_39 if ARM64_4K_PAGES
++	default ARM64_VA_BITS_48 if ARM64_4K_PAGES
+ 	default ARM64_VA_BITS_42 if ARM64_64K_PAGES
+ 	help
+ 	  Allows choosing one of multiple possible virtual address
+@@ -354,7 +355,7 @@ config ARM64_VA_BITS_42
+ 
+ config ARM64_VA_BITS_48
+ 	bool "48-bit"
+-	depends on !ARM_SMMU
++	depends on ARM64_4K_PAGES
+ 
+ endchoice
+ 
+@@ -613,7 +614,7 @@ source "fs/Kconfig.binfmt"
+ 
+ config COMPAT
+ 	bool "Kernel support for 32-bit EL0"
+-	depends on !ARM64_64K_PAGES
++	depends on !ARM64_64K_PAGES || EXPERT
+ 	select COMPAT_BINFMT_ELF
+ 	select HAVE_UID16
+ 	select OLD_SIGSUSPEND3
+-- 
+1.9.1
+

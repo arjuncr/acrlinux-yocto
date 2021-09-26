@@ -1,0 +1,84 @@
+From d3b72967f59f01071b6d7d0ff5cf15704f38b441 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Fri, 4 Dec 2020 13:59:10 +0530
+Subject: [PATCH 14/21] amd-xgbe: Reset the PHY rx data path when mailbox
+ command timeout
+
+Sometimes mailbox command timeout when the RX data path becomes
+unresponsive. This prevents the submission of new mailbox commands.
+This fix identify the timeout and reset the RX data path
+so that next message can be submitted properly.
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-common.h |  8 +++++++
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c | 24 +++++++++++++++++----
+ 2 files changed, 28 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-common.h b/drivers/net/ethernet/amd/xgbe/xgbe-common.h
+index b40d4377cc71..9d536cef0498 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-common.h
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-common.h
+@@ -1319,6 +1319,14 @@
+ #define MDIO_VEND2_AN_STAT		0x8002
+ #endif
+ 
++#ifndef MDIO_MMD_DIGITAL_STAT
++#define MDIO_MMD_DIGITAL_STAT		0x8010
++#endif
++
++#ifndef MDIO_PMA_RX_CTRL1
++#define MDIO_PMA_RX_CTRL1		0x8051
++#endif
++
+ #ifndef MDIO_VEND2_PMA_CDR_CONTROL
+ #define MDIO_VEND2_PMA_CDR_CONTROL	0x8056
+ #endif
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index 59554673c142..e7e3eabd0e5d 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -1967,11 +1967,15 @@ static void xgbe_phy_perform_ratechange(struct xgbe_prv_data *pdata,
+ {
+ 	unsigned int s0 = 0;
+ 	unsigned int wait;
++	unsigned int i;
++	int reg;
+ 
+ 	/* Log if a previous command did not complete */
+-	if (XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS))
+-		netif_dbg(pdata, link, pdata->netdev,
++	if (XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS)) {
++		netif_err(pdata, link, pdata->netdev,
+ 			  "firmware mailbox not ready for command\n");
++			goto rx_reset;
++	}
+ 
+ 	/* Construct the command */
+ 	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, COMMAND, cmd);
+@@ -1991,8 +1995,20 @@ static void xgbe_phy_perform_ratechange(struct xgbe_prv_data *pdata,
+ 		usleep_range(1000, 2000);
+ 	}
+ 
+-	netif_dbg(pdata, link, pdata->netdev,
+-		  "firmware mailbox command did not complete\n");
++rx_reset:
++	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_MMD_DIGITAL_STAT);
++	if (reg & 0x10) {
++		/* mailbox command timed out, reset Rx block */
++		XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_CTRL1,
++				 BIT(4) /* mask */, BIT(4)/* value*/);
++
++		for (i = 0; i < 100; i++)
++			usleep_range(1000, 2000);
++
++		XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_CTRL1,
++				 BIT(4) /* mask */, 0/* value*/);
++		netif_err(pdata, link, pdata->netdev, " rxX_reset done!\n");
++	}
+ }
+ 
+ static void xgbe_phy_rrc(struct xgbe_prv_data *pdata)
+-- 
+2.17.1
+

@@ -1,0 +1,5 @@
+Enable OpenSSL 1.0.2 as the system OpenSSL version.
+
+#@TYPE: Wrtemplate
+#@NAME: openssl102
+#@DESCRIPTION: Enable OpenSSL 1.0.2 as the system OpenSSL version.

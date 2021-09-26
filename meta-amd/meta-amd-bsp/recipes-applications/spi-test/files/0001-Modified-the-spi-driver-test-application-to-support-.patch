@@ -1,0 +1,47 @@
+From a059c0737d9f75ce4e62acf3644708e32dc34fc2 Mon Sep 17 00:00:00 2001
+From: smavila <smavila@wallaby.amd.com>
+Date: Mon, 3 Dec 2018 06:21:04 +0000
+Subject: [PATCH] Modified the spi driver  test application to support SPI ROM
+ Flash in Wallaby platform
+
+Signed-off-by: smavila <smavila@wallaby.amd.com>
+Signed-off-by: Arsalan H. Awan <Arsalan_Awan@mentor.com>
+---
+ spirom-test.c      | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 spirom-test.c
+
+diff --git a/spirom-test.c b/spirom-test.c
+old mode 100644
+new mode 100755
+index 22c9003..2f10309
+--- a/spirom-test.c
++++ b/spirom-test.c
+@@ -243,8 +243,23 @@ void parse_cmd(const char *cmdline)
+ 			return;
+ 		}
+ 
++		/* read device ID Command with response */
++		tr.buf[0] = ROM_RDID;
++		tr.direction = RECEIVE;
++		tr.addr_present = 0;
++		tr.len = 3;
++
++		ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
++		if (ret < 1) {
++			printf("\nError executing RDID command\n\n");
++			return;
++		}
++		
++		if( (tr.buf[1] == 0x20) && (tr.buf[2] == 0xbb) && (tr.buf[3] == 0x18))
++			tr.buf[0] = 0xC7; /* N25Q128A SPI ROM needs 0xC7 as erase command */
++		else
++			tr.buf[0] = ROM_CHIP_ERASE;	
+ 		/* Command without data */
+-		tr.buf[0] = ROM_CHIP_ERASE;
+ 		tr.direction = 0;
+ 		tr.len = 0;
+ 		tr.addr_present = 0;
+-- 
+2.17.1
+

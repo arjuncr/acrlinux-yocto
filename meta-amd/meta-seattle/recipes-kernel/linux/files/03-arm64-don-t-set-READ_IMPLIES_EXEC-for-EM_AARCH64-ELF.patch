@@ -1,0 +1,55 @@
+From b2072dba2431de0cfef3e6fb9823537a812dd90b Mon Sep 17 00:00:00 2001
+From: Adrian Calianu <adrian.calianu@enea.com>
+Date: Mon, 23 Feb 2015 16:48:43 +0100
+Subject: [PATCH 1/1] arm64: don't set READ_IMPLIES_EXEC for EM_AARCH64 ELF
+ objects
+
+Currently, we're accidentally ending up with executable stacks on
+AArch64 when the ABI says we shouldn't be, and relying on glibc to
+fix things up for us when we're loaded. However, SELinux will deny us
+mucking with the stack, and hit us with execmem AVCs.
+
+current->personality & READ_IMPLIES_EXEC is currently being set for
+AArch64 binaries, resulting in an executable stack, when no explicit
+PT_GNU_STACK header is present.
+
+[kmcmarti@sedition ~]$ uname -p
+aarch64
+[kmcmarti@sedition ~]$ cat /proc/$$/personality 
+00400000
+The reason for this is, without an explicit PT_GNU_STACK entry in the
+binary, stk is still set to EXSTACK_DEFAULT (which should be
+non-executable on AArch64.) As a result, elf_read_implies_exec is true,
+and we set READ_IMPLIES_EXEC in binfmt_elf.c:load_elf_binary.
+
+Fix this to return 0 in the native case, and parrot the logic from
+arch/arm/kernel/elf.c otherwise. With this patch, binaries correctly
+don't have READ_IMPLIES_EXEC set, and we can let PT_GNU_STACK change
+things if it's explicitly requested.
+
+Signed-off-by: Kyle McMartin <kyle@redhat.com>
+
+Upstream-Status: Pending
+
+Signed-off-by: Adrian Calianu <adrian.calianu@enea.com>
+---
+ arch/arm64/include/asm/elf.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/include/asm/elf.h b/arch/arm64/include/asm/elf.h
+index 1f65be3..dbc9888 100644
+--- a/arch/arm64/include/asm/elf.h
++++ b/arch/arm64/include/asm/elf.h
+@@ -114,7 +114,8 @@ typedef struct user_fpsimd_state elf_fpregset_t;
+  */
+ #define elf_check_arch(x)		((x)->e_machine == EM_AARCH64)
+ 
+-#define elf_read_implies_exec(ex,stk)	(stk != EXSTACK_DISABLE_X)
++#define elf_read_implies_exec(ex,stk) (test_thread_flag(TIF_32BIT) \
++                                    ? (stk == EXSTACK_ENABLE_X) : 0)
+ 
+ #define CORE_DUMP_USE_REGSET
+ #define ELF_EXEC_PAGESIZE	PAGE_SIZE
+-- 
+1.9.1
+

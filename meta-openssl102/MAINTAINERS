@@ -1,0 +1,27 @@
+This file contains a list of maintainers for the meta-openssl102 layer.
+
+Please submit any patches against meta-openssl102 to the Yocto Project mailing
+list (yocto@yoctoproject.org).  Please prefix emails with [meta-openssl102].
+
+You may also contact the maintainers directly.
+
+Descriptions of section entries:
+
+	M: Mail patches to: FullName <address@domain>
+	F: Files and directories with wildcard patterns.
+	   A trailing slash includes all files and subdirectory files.
+	   F:	recipes-devtools/	all files in and below meta-crownbay
+	   F:	recipes-selinux/*	all files in meta-crownbay, but not below
+	   One pattern per line.  Multiple F: lines acceptable.
+
+Please keep this list in alphabetical order.
+
+Maintainers List (try to look for most precise areas first)
+
+M:	Mark Hatle <mark.hatle@kernel.crashing.org>
+F:	conf
+F:	recipes-*/
+
+M:	Jason Wessel <jason.wessel@windriver.com>
+F:	recipes-*/
+F:	templates/

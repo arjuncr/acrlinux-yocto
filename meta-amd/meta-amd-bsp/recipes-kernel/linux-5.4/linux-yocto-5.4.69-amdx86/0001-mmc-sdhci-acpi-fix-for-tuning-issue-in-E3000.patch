@@ -1,0 +1,45 @@
+From 6943e68cd564d7197a2c914bc12c037ca138adad Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Tue, 9 Feb 2021 23:44:03 +0530
+Subject: [PATCH] mmc: sdhci-acpi: fix for tuning issue in E3000
+
+	HS400 mode has tuning issue in E3000, The fix avoids swutching
+to HS from HS200 speed.
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Signed-off-by: Rahul Kumar <rahul.kumar1@amd.com>
+---
+ drivers/mmc/host/sdhci-acpi.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/mmc/host/sdhci-acpi.c b/drivers/mmc/host/sdhci-acpi.c
+index b2d924c5e82e..9622fa3108d1 100644
+--- a/drivers/mmc/host/sdhci-acpi.c
++++ b/drivers/mmc/host/sdhci-acpi.c
+@@ -582,6 +582,14 @@ static void amd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
+ 	unsigned int old_timing = host->timing;
+ 	u16 val;
+ 
++	if (host->quirks2 & SDHCI_QUIRK2_TUNING_WORK_AROUND) {
++		if (mmc->ios.clock == 52000000 && host->clock == 200000000)
++			return;
++
++		if (mmc->ios.timing == 1 && host->timing == 9)
++			return;
++	}
++
+ 	sdhci_set_ios(mmc, ios);
+ 
+ 	if (old_timing != host->timing && amd_host->tuned_clock) {
+@@ -658,6 +666,8 @@ static int sdhci_acpi_emmc_amd_probe_slot(struct platform_device *pdev,
+ 	    (host->mmc->caps & MMC_CAP_1_8V_DDR))
+ 		host->mmc->caps2 = MMC_CAP2_HS400_1_8V;
+ 
++	host->quirks2 |= SDHCI_QUIRK2_TUNING_WORK_AROUND;
++
+ 	host->mmc_host_ops.select_drive_strength = amd_select_drive_strength;
+ 	host->mmc_host_ops.set_ios = amd_set_ios;
+ 	host->mmc_host_ops.execute_tuning = amd_sdhci_execute_tuning;
+-- 
+2.17.1
+

@@ -1,0 +1,10 @@
+patch 0003-amd-xgbe-fix-for-the-crash-which-happens-during-SFP-.patch
+patch 0005-amd-xgbe-Fix-NETDEV-WATCHDOG-transmit-queue-timed-ou.patch
+patch 0013-amd-xgbe-Fix-for-Network-fluctuations.patch
+patch 0014-amd-xgbe-Reset-the-PHY-rx-data-path-when-mailbox-com.patch
+patch 0015-amd-xgbe-Fix-NETDEV-WATCHDOG-transmit-queue-timed-ou.patch
+patch 0016-amd-xgbe-sets-XGBE_LINK_INIT-when-there-is-a-link-fa.patch
+patch 0017-amd-xgbe-improved-KR-training-sequence.patch
+patch 0018-amd-xgbe-rrc-is-required-only-for-Fixed-PHY-configur.patch
+patch 0019-amd-xgbe-increased-cdr-delay.patch
+patch 0020-amd-xgbe-synchronization-between-AN-state-machine-an.patch

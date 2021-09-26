@@ -1,0 +1,110 @@
+From 8471812e8eee4a56562885cb5746d42587c5074a Mon Sep 17 00:00:00 2001
+From: Adrian Calianu <adrian.calianu@enea.com>
+Date: Thu, 13 Aug 2015 09:28:28 +0200
+Subject: [PATCH] Fix build issues after porting PCI patches to 4.1.2 kernel
+
+Upstream-Status: Inappropriate 
+Since is just a patch that fix previous "styx" patchset.
+
+Signed-off-by: Adrian Calianu <adrian.calianu@enea.com>
+---
+ drivers/irqchip/irq-gic-v2m.c       | 3 +--
+ drivers/pci/host/pci-host-generic.c | 9 ++++-----
+ include/linux/irqchip/arm-gic.h     | 2 ++
+ include/linux/irqdomain.h           | 1 -
+ include/linux/mod_devicetable.h     | 1 +
+ 5 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/irqchip/irq-gic-v2m.c b/drivers/irqchip/irq-gic-v2m.c
+index c32eb55..5b219f3 100644
+--- a/drivers/irqchip/irq-gic-v2m.c
++++ b/drivers/irqchip/irq-gic-v2m.c
+@@ -263,14 +263,13 @@ static int __init gicv2m_init_one(struct irq_domain *parent,
+ 		goto err_iounmap;
+ 	}
+ 
+-    inner_domain = irq_domain_add_tree(node, &gicv2m_domain_ops, v2m);
++    inner_domain = irq_domain_add_tree(NULL, &gicv2m_domain_ops, v2m);
+     if (!inner_domain) {
+ 		pr_err("Failed to create GICv2m domain\n");
+ 		ret = -ENOMEM;
+ 		goto err_free_bm;
+ 	}
+ 
+-    inner_domain->bus_token = DOMAIN_BUS_PLATFORM_MSI;
+     inner_domain->name = gicv2m_domain_name;
+ 
+     ret = -ENOMEM;
+diff --git a/drivers/pci/host/pci-host-generic.c b/drivers/pci/host/pci-host-generic.c
+index 01931e8..a4780c7 100644
+--- a/drivers/pci/host/pci-host-generic.c
++++ b/drivers/pci/host/pci-host-generic.c
+@@ -102,10 +102,9 @@ MODULE_DEVICE_TABLE(of, gen_pci_of_match);
+ 
+ static void gen_pci_release_of_pci_ranges(struct gen_pci *pci)
+ {
+-    struct pci_host_bridge_window *win;
++	struct resource_entry *win;
+ 
+-    list_for_each_entry(win, &pci->resources, list)
+-        /* Release only requested resources */
++    resource_list_for_each_entry(win, &pci->resources)
+         if (win->res->parent)
+             release_resource(win->res);
+ 
+@@ -231,12 +230,12 @@ struct pci_bus *gen_scan_root_bus(struct device *parent, int bus,
+                       struct pci_ops *ops, void *sysdata,
+                       struct list_head *resources)
+ {
+-   struct pci_host_bridge_window *window;
++   struct resource_entry *window;
+    bool found = false;
+    struct pci_bus *b;
+    int max;
+ 
+-   list_for_each_entry(window, resources, list)
++   resource_list_for_each_entry(window, resources)
+        if (window->res->flags & IORESOURCE_BUS) {
+            found = true;
+            break;
+diff --git a/include/linux/irqchip/arm-gic.h b/include/linux/irqchip/arm-gic.h
+index f490f26..8eaeac1 100644
+--- a/include/linux/irqchip/arm-gic.h
++++ b/include/linux/irqchip/arm-gic.h
+@@ -122,7 +122,9 @@ static inline void gic_init(unsigned int nr, int start,
+ 
+ int gicv2m_of_init(struct device_node *node, struct irq_domain *parent);
+ 
++/*
+ void gic_send_sgi(unsigned int cpu_id, unsigned int irq);
++*/
+ int gic_get_cpu_id(unsigned int cpu);
+ void gic_migrate_target(unsigned int new_cpu_id);
+ unsigned long gic_get_sgir_physaddr(void);
+diff --git a/include/linux/irqdomain.h b/include/linux/irqdomain.h
+index ddd6602..9964c3e 100644
+--- a/include/linux/irqdomain.h
++++ b/include/linux/irqdomain.h
+@@ -120,7 +120,6 @@ struct irq_domain {
+ 	unsigned int flags;
+ 
+ 	/* Optional data */
+-	struct device_node *of_node;
+     enum irq_domain_ref_type type;
+     union {
+         struct device_node *of_node;
+diff --git a/include/linux/mod_devicetable.h b/include/linux/mod_devicetable.h
+index 8a958d1..8492ad7 100644
+--- a/include/linux/mod_devicetable.h
++++ b/include/linux/mod_devicetable.h
+@@ -190,6 +190,7 @@ struct css_device_id {
+ struct acpi_device_id {
+ 	__u8 id[ACPI_ID_LEN];
+ 	kernel_ulong_t driver_data;
++    __u32 cls;
+ };
+ 
+ #define PNP_ID_LEN	8
+-- 
+1.9.1
+
