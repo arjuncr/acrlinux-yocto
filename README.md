@@ -21,7 +21,7 @@ cd acrlinux-yocto
 ```
 . acrlinux-env
 
-bitbake acrlinux-minimal    
+bitbake acrlinux 
 
 Parsing recipes: 100% |#################################################################################| Time: 0:00:49
 Parsing of 2468 .bb files complete (0 cached, 2468 parsed). 3643 targets, 116 skipped, 0 masked, 0 errors.
