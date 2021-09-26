@@ -47,7 +47,7 @@ meta-acrlinux        = "master:153964ca4079907bd6597db12ac569d5003db417"
 
 ```
 
-## Run with virual box   
+## Run with virtual box   
 find the iso file here:   
 build/acrlinux_build/deploy/images/acrlinux-x86-64/acrlinux-distro.iso  
    
