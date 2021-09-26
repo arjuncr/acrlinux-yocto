@@ -11,8 +11,6 @@ sudo apt-get install -y git build-essential libsdl1.2-dev texinfo gawk chrpath d
 **Download the source**  
 
 git clone https://github.com/arjuncr/acrlinux-yocto.git      
-              OR     
-git clone https://github.com/arjuncr/acrlinux-yocto.git -b acrlinux-active  
 
 cd acrlinux-yocto   
 
