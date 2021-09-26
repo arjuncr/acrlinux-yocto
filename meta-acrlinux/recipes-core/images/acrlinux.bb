@@ -1,4 +1,4 @@
-SUMMARY = "Minimal Version Of acrlinux Disto"
+SUMMARY = "acrlinux Full Image"
 
 IMAGE_INSTALL = "packagegroup-core-boot ${CORE_IMAGE_EXTRA_INSTALL}"
 
