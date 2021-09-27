@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+# Rebuild xfonts-base, ca-certificates and shared-mime-info database
+rebuild="shared-mime-info xfonts-base ca-certificates"
+for pkg in $rebuild; do
+  if [[ $(dpkg -l $pkg | awk '/^ii/ { print $1 }') = ii ]];
+  then
+    dpkg-reconfigure -fnoninteractive $pkg;
+  fi
+done
+
+# Clear and regenerate the font cache
+fc-cache -f
+# Update shared MIME info database
+update-mime-database /usr/share/mime
+# Update certificates
+update-ca-certificates
+# Regenerate the default snakeoil cert
+make-ssl-cert generate-default-snakeoil --force-overwrite

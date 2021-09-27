@@ -1,0 +1,14 @@
+[Unit]
+Description=Scripts that should be run only once
+Before=basic.target network-pre.target
+After=sysinit.target local-fs.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+CacheDirectory=runonce
+RemainAfterExit=yes
+ExecStart=/usr/sbin/runonce
+
+[Install]
+WantedBy=basic.target

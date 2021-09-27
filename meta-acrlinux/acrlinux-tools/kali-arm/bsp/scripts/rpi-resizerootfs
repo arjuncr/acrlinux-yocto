@@ -1,0 +1,35 @@
+#!/bin/sh
+# Code comes from Francisco José Rodríguez Martos
+# https://github.com/FrangaL/rpi-img-builder
+
+rootpart="$(findmnt -n -o SOURCE /)"
+root_part_nr="$(blkid -sPART_ENTRY_NUMBER -o value -p $rootpart)"
+rootdev="/dev/$(lsblk -no pkname "$rootpart")"
+
+# Parted will detect if the GPT label is messed up and fix it
+# automatically, we just need to tell it to do so.
+parted -s $rootdev print 2>&1 | grep -z "fix the GPT" && {
+    echo "Fix" | parted ---pretend-input-tty $rootdev print
+}
+
+# Check if there's free space at the end of the device
+free_space="$(parted -m -s $rootdev print free | tail -n1 | grep free)"
+if test -z "$free_space"; then
+    # Great, we already resized; nothing left to do!
+    exit 0
+fi
+
+
+#flock $root_part sfdisk -f $root_part -N $root_part_num <<EOF
+#,+
+#EOF
+#parted -s $rootdev resizepart $root_part_nr 100%
+/usr/local/bin/growpart -N $rootdev $root_part_nr
+/usr/local/bin/growpart $rootdev $root_part_nr
+
+sleep 5
+udevadm settle
+sleep 5
+flock $rootdev partprobe $rootpart
+mount -o remount,rw $rootpart
+resize2fs $rootpart #&& rm /usr/local/bin/growpart

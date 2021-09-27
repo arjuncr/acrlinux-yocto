@@ -1,0 +1,21 @@
+#!/bin/bash -e
+
+# Choose a locale and generate it to eliminate LC warnings.
+if [ -f "/etc/locale.gen" ] || [ -f "/etc/locale.conf" ]; then
+  locale-gen
+else
+  LOCALES="en_US.UTF-8"
+  sed -i "s/^# *\($LOCALES\)/\1/" /etc/locale.gen
+  locale-gen
+  echo "LANG=$LOCALES" >/etc/locale.conf
+  echo "LC_ALL=$LOCALES" >>/etc/locale.conf
+cat <<'EOM' >/etc/profile.d/default-lang.sh
+if [ -z "$LANG" ]; then
+    source /etc/locale.conf
+    export LANG
+elif [ -z "$LC_ALL" ]; then
+    source /etc/locale.conf
+    export LC_ALL
+fi
+EOM
+fi

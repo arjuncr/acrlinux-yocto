@@ -1,0 +1,20 @@
+#!/bin/sh
+
+PROGRAM=$(dpkg-divert --truename /bin/ping)
+
+if command -v setcap > /dev/null; then
+    if setcap cap_net_raw+ep $PROGRAM; then
+        chmod u-s $PROGRAM
+    else
+        echo "Setcap failed on $PROGRAM, falling back to setuid" >&2
+        chmod u+s $PROGRAM
+    fi
+else
+    echo "Setcap is not installed, falling back to setuid" >&2
+    chmod u+s $PROGRAM
+fi
+
+echo "net.ipv4.ping_group_range = 0 2147483647" > /etc/sysctl.d/ping.conf
+sysctl -p
+
+exit 0

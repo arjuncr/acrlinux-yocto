@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Docker doesn't play nicely with nftables. Use iptables-legacy instead.
+# Other things don't tend to use nftables either so this makes sense to do.
+sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy

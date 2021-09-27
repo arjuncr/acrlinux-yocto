@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Add the user to the sudoers file if they're not there
+if ! grep -q kali /etc/sudoers; then
+    echo 'kali ALL=(ALL) NOPASSWD: ALL' >>/etc/sudoers
+fi
