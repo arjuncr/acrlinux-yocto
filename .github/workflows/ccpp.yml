@@ -1,0 +1,21 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build_sanity_test:
+
+    runs-on: ubuntu-latest
+    steps:
+    - name: Installing build dep
+      run: sudo apt install -y git build-essential libsdl1.2-dev texinfo gawk chrpath diffstat bison flex libelf-dev
+    - name: Running script to build minimal image
+      run: |
+        git clone https://github.com/arjuncr/acrlinux-yocto.git
+        cd acrlinux-yocto 
+        . acrlinux-env
+        bitbake-layers show-layers
+        bitbake-layers show-overlayed
+        bitbake-layers show-recipes
+        bitbake-layers show-appends
+        bitbake-layers show-cross-depends
