@@ -1,0 +1,3 @@
+[submodule "meta-acrlinux"]
+	path = meta-acrlinux
+	url = https://github.com/arjuncr/meta-acrlinux.git
